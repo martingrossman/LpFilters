@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Rolling Filter Playground</title>
+<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+<style>
+:root{
+  --bg:#0d1117;
+  --panel:#161b22;
+  --panel2:#1f2630;
+  --border:#2d3748;
+  --text:#e6edf3;
+  --muted:#9aa4b2;
+  --accent:#6ea8fe;
+  --good:#4ade80;
+  --warn:#fbbf24;
+  --bad:#f87171;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+body{padding:14px}
+.wrap{max-width:1400px;margin:0 auto}
+h1{font-size:24px;line-height:1.2;margin:0 0 6px 0}
+.sub{color:var(--muted);font-size:14px;margin-bottom:14px}
+.grid{
+  display:grid;
+  grid-template-columns:360px 1fr;
+  gap:14px;
+}
+@media (max-width: 980px){
+  .grid{grid-template-columns:1fr}
+}
+.card{
+  background:linear-gradient(180deg,var(--panel),var(--panel2));
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:14px;
+  box-shadow:0 8px 30px rgba(0,0,0,0.18);
+}
+.controls{
+  display:grid;
+  gap:12px;
+}
+.section-title{
+  font-size:13px;
+  font-weight:700;
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin:4px 0 2px 0;
+}
+.control{
+  display:grid;
+  gap:6px;
+}
+.control label{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  font-size:14px;
+}
+.control .value{
+  color:var(--accent);
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+input[type="range"]{
+  width:100%;
+  appearance:none;
+  height:36px;
+  background:transparent;
+}
+input[type="range"]::-webkit-slider-runnable-track{
+  height:6px;border-radius:999px;background:#2b3442;
+}
+input[type="range"]::-webkit-slider-thumb{
+  appearance:none;width:24px;height:24px;border-radius:50%;
+  background:var(--accent);border:none;margin-top:-9px;
+  box-shadow:0 2px 10px rgba(110,168,254,.45);
+}
+input[type="range"]::-moz-range-track{
+  height:6px;border-radius:999px;background:#2b3442;
+}
+input[type="range"]::-moz-range-thumb{
+  width:24px;height:24px;border-radius:50%;
+  background:var(--accent);border:none;
+  box-shadow:0 2px 10px rgba(110,168,254,.45);
+}
+select,button{
+  width:100%;
+  background:#0f141b;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px 12px;
+  font-size:15px;
+}
+.row2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+@media (max-width: 520px){
+  .row2{grid-template-columns:1fr}
+}
+.checks{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px 12px;
+}
+@media (max-width: 520px){
+  .checks{grid-template-columns:1fr}
+}
+.chk{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:14px;
+  min-height:36px;
+}
+.chk input{width:18px;height:18px}
+.metrics{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0,1fr));
+  gap:10px;
+}
+@media (max-width: 520px){
+  .metrics{grid-template-columns:1fr}
+}
+.metric{
+  background:#0f141b;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+}
+.metric .k{
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+.metric .v{
+  font-size:22px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.hint{
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.45;
+}
+.plots{
+  display:grid;
+  gap:14px;
+}
+.plot{
+  height:380px;
+}
+@media (max-width: 700px){
+  .plot{height:320px}
+}
+.footer-note{
+  margin-top:8px;
+  font-size:12px;
+  color:var(--muted);
+}
+button{
+  cursor:pointer;
+  transition:transform .05s ease, background .15s ease;
+}
+button:active{transform:translateY(1px)}
+.btn-accent{
+  background:linear-gradient(180deg,#1b4f9c,#153d76);
+  border-color:#285ea8;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Rolling Filter Playground</h1>
+  <div class="sub">Compare rolling average, rolling regression, and α-β filter on the same signal. Focus on output smoothness and gradient stability.</div>
+
+  <div class="grid">
+    <div class="card">
+      <div class="controls">
+        <div class="section-title">Signal</div>
+
+        <div class="control">
+          <label for="signalType">
+            <span>Signal type</span>
+          </label>
+          <select id="signalType">
+            <option value="noisy_ramp" selected>Noisy ramp</option>
+            <option value="constant">Constant</option>
+            <option value="ramp">Ramp</option>
+            <option value="step">Step</option>
+            <option value="sine">Sine</option>
+            <option value="piecewise">Piecewise trend</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <label for="nPts">
+            <span>Samples</span>
+            <span class="value" id="nPtsVal">200</span>
+          </label>
+          <input id="nPts" type="range" min="50" max="600" step="10" value="200" />
+        </div>
+
+        <div class="control">
+          <label for="noise">
+            <span>Noise level</span>
+            <span class="value" id="noiseVal">2.0</span>
+          </label>
+          <input id="noise" type="range" min="0" max="20" step="0.1" value="2.0" />
+        </div>
+
+        <div class="control">
+          <label for="seed">
+            <span>Random seed</span>
+            <span class="value" id="seedVal">1</span>
+          </label>
+          <input id="seed" type="range" min="1" max="999" step="1" value="1" />
+        </div>
+
+        <div class="section-title">Rolling average / regression</div>
+
+        <div class="control">
+          <label for="winAvg">
+            <span>Average window</span>
+            <span class="value" id="winAvgVal">15</span>
+          </label>
+          <input id="winAvg" type="range" min="2" max="100" step="1" value="15" />
+        </div>
+
+        <div class="control">
+          <label for="winReg">
+            <span>Regression window</span>
+            <span class="value" id="winRegVal">21</span>
+          </label>
+          <input id="winReg" type="range" min="3" max="100" step="1" value="21" />
+        </div>
+
+        <div class="section-title">α-β filter</div>
+
+        <div class="control">
+          <label for="alpha">
+            <span>α</span>
+            <span class="value" id="alphaVal">0.08</span>
+          </label>
+          <input id="alpha" type="range" min="0.001" max="1" step="0.001" value="0.08" />
+        </div>
+
+        <div class="control">
+          <label for="beta">
+            <span>β</span>
+            <span class="value" id="betaVal">0.006</span>
+          </label>
+          <input id="beta" type="range" min="0.0001" max="0.2" step="0.0001" value="0.006" />
+        </div>
+
+        <div class="row2">
+          <button id="regenBtn" class="btn-accent">Regenerate signal</button>
+          <button id="presetStable">Preset: stable gradient</button>
+        </div>
+
+        <div class="section-title">Visible traces</div>
+        <div class="checks">
+          <label class="chk"><input type="checkbox" id="showRaw" checked>Raw</label>
+          <label class="chk"><input type="checkbox" id="showTruth" checked>Ground truth</label>
+          <label class="chk"><input type="checkbox" id="showAvg" checked>Rolling average</label>
+          <label class="chk"><input type="checkbox" id="showReg" checked>Rolling regression</label>
+          <label class="chk"><input type="checkbox" id="showAB" checked>α-β output</label>
+          <label class="chk"><input type="checkbox" id="showGradTruth" checked>Truth gradient</label>
+          <label class="chk"><input type="checkbox" id="showGradAvg" checked>Avg gradient</label>
+          <label class="chk"><input type="checkbox" id="showGradReg" checked>Reg slope</label>
+          <label class="chk"><input type="checkbox" id="showGradAB" checked>α-β velocity</label>
+        </div>
+
+        <div class="section-title">Quick metrics</div>
+        <div class="metrics">
+          <div class="metric">
+            <div class="k">Grad std — Avg</div>
+            <div class="v" id="mAvgStd">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Grad std — Reg</div>
+            <div class="v" id="mRegStd">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Grad std — α-β</div>
+            <div class="v" id="mABStd">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Best smoothest</div>
+            <div class="v" id="mBest">–</div>
+          </div>
+        </div>
+
+        <div class="hint">
+          Lower gradient std means smoother derivative. For a very stable gradient, α should usually be modest and β much smaller than α.
+        </div>
+      </div>
+    </div>
+
+    <div class="plots">
+      <div class="card">
+        <div id="plotSignal" class="plot"></div>
+      </div>
+      <div class="card">
+        <div id="plotGrad" class="plot"></div>
+        <div class="footer-note">Regression slope is estimated directly from a local linear fit. Average gradient is derived from the smoothed output, so it often lags more.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const els = {
+    signalType: document.getElementById('signalType'),
+    nPts: document.getElementById('nPts'),
+    noise: document.getElementById('noise'),
+    seed: document.getElementById('seed'),
+    winAvg: document.getElementById('winAvg'),
+    winReg: document.getElementById('winReg'),
+    alpha: document.getElementById('alpha'),
+    beta: document.getElementById('beta'),
+
+    nPtsVal: document.getElementById('nPtsVal'),
+    noiseVal: document.getElementById('noiseVal'),
+    seedVal: document.getElementById('seedVal'),
+    winAvgVal: document.getElementById('winAvgVal'),
+    winRegVal: document.getElementById('winRegVal'),
+    alphaVal: document.getElementById('alphaVal'),
+    betaVal: document.getElementById('betaVal'),
+
+    regenBtn: document.getElementById('regenBtn'),
+    presetStable: document.getElementById('presetStable'),
+
+    showRaw: document.getElementById('showRaw'),
+    showTruth: document.getElementById('showTruth'),
+    showAvg: document.getElementById('showAvg'),
+    showReg: document.getElementById('showReg'),
+    showAB: document.getElementById('showAB'),
+    showGradTruth: document.getElementById('showGradTruth'),
+    showGradAvg: document.getElementById('showGradAvg'),
+    showGradReg: document.getElementById('showGradReg'),
+    showGradAB: document.getElementById('showGradAB'),
+
+    mAvgStd: document.getElementById('mAvgStd'),
+    mRegStd: document.getElementById('mRegStd'),
+    mABStd: document.getElementById('mABStd'),
+    mBest: document.getElementById('mBest')
+  };
+
+  let regenNonce = 0;
+
+  function fmt(x, digits=3){
+    return Number.isFinite(x) ? x.toFixed(digits) : '–';
+  }
+
+  function rngFactory(seed){
+    let s = seed >>> 0;
+    return function(){
+      s = (1664525 * s + 1013904223) >>> 0;
+      return s / 4294967296;
+    };
+  }
+
+  function randn(rng){
+    let u = 0, v = 0;
+    while(u === 0) u = rng();
+    while(v === 0) v = rng();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  function generateSignal(type, n, noise, seed){
+    const rng = rngFactory((seed + regenNonce * 1009) >>> 0);
+    const x = Array.from({length:n}, (_,i)=>i);
+    const truth = new Array(n);
+    const truthGrad = new Array(n);
+
+    for(let i=0;i<n;i++){
+      const t = i;
+      if(type === 'constant'){
+        truth[i] = 20;
+        truthGrad[i] = 0;
+      }else if(type === 'ramp'){
+        truth[i] = 5 + 0.18 * t;
+        truthGrad[i] = 0.18;
+      }else if(type === 'step'){
+        truth[i] = t < n*0.45 ? 12 : 32;
+        truthGrad[i] = 0;
+      }else if(type === 'sine'){
+        truth[i] = 20 + 8 * Math.sin(2*Math.PI*t/60);
+        truthGrad[i] = 8 * Math.cos(2*Math.PI*t/60) * (2*Math.PI/60);
+      }else if(type === 'piecewise'){
+        if(t < n*0.25){
+          truth[i] = 8 + 0.06*t;
+          truthGrad[i] = 0.06;
+        }else if(t < n*0.55){
+          truth[i] = 8 + 0.06*(n*0.25) + 0.22*(t - n*0.25);
+          truthGrad[i] = 0.22;
+        }else if(t < n*0.78){
+          truth[i] = 8 + 0.06*(n*0.25) + 0.22*(n*0.30) - 0.10*(t - n*0.55);
+          truthGrad[i] = -0.10;
+        }else{
+          truth[i] = 8 + 0.06*(n*0.25) + 0.22*(n*0.30) - 0.10*(n*0.23) + 0.03*(t - n*0.78);
+          truthGrad[i] = 0.03;
+        }
+      }else{
+        truth[i] = 6 + 0.12*t + 2.2*Math.sin(2*Math.PI*t/90);
+        truthGrad[i] = 0.12 + 2.2*Math.cos(2*Math.PI*t/90)*(2*Math.PI/90);
+      }
+    }
+
+    const raw = truth.map(v => v + noise * randn(rng));
+    return {x, raw, truth, truthGrad};
+  }
+
+  function rollingAverage(arr, w){
+    const n = arr.length;
+    const out = new Array(n).fill(NaN);
+    let sum = 0;
+    for(let i=0;i<n;i++){
+      sum += arr[i];
+      if(i >= w) sum -= arr[i-w];
+      const count = Math.min(i+1, w);
+      out[i] = sum / count;
+    }
+    return out;
+  }
+
+  function gradientFromSignal(arr){
+    const n = arr.length;
+    const g = new Array(n).fill(NaN);
+    if(n === 0) return g;
+    if(n === 1){ g[0] = 0; return g; }
+    g[0] = arr[1] - arr[0];
+    for(let i=1;i<n-1;i++){
+      g[i] = (arr[i+1] - arr[i-1]) / 2;
+    }
+    g[n-1] = arr[n-1] - arr[n-2];
+    return g;
+  }
+
+  function rollingRegression(arr, w){
+    const n = arr.length;
+    const yhat = new Array(n).fill(NaN);
+    const slope = new Array(n).fill(NaN);
+
+    for(let i=0;i<n;i++){
+      const start = Math.max(0, i - w + 1);
+      const m = i - start + 1;
+      let sumY = 0;
+      let sumTY = 0;
+
+      for(let k=0;k<m;k++){
+        const y = arr[start + k];
+        sumY += y;
+        sumTY += k * y;
+      }
+
+      const sumT = (m-1)*m/2;
+      const sumT2 = (m-1)*m*(2*m-1)/6;
+      const denom = m*sumT2 - sumT*sumT;
+
+      let a = 0;
+      let b = sumY / m;
+
+      if(Math.abs(denom) > 1e-12){
+        a = (m*sumTY - sumT*sumY) / denom;
+        b = (sumY - a*sumT) / m;
+      }
+
+      yhat[i] = a * (m - 1) + b;
+      slope[i] = a;
+    }
+    return {yhat, slope};
+  }
+
+  function alphaBetaFilter(arr, alpha, beta, dt=1){
+    const n = arr.length;
+    const pos = new Array(n).fill(NaN);
+    const vel = new Array(n).fill(NaN);
+
+    if(n === 0) return {pos, vel};
+
+    let x = arr[0];
+    let v = 0;
+    pos[0] = x;
+    vel[0] = v;
+
+    for(let i=1;i<n;i++){
+      const xPred = x + v*dt;
+      const r = arr[i] - xPred;
+      x = xPred + alpha * r;
+      v = v + beta * r / dt;
+      pos[i] = x;
+      vel[i] = v;
+    }
+    return {pos, vel};
+  }
+
+  function std(arr){
+    const vals = arr.filter(v => Number.isFinite(v));
+    if(vals.length < 2) return NaN;
+    const mu = vals.reduce((a,b)=>a+b,0) / vals.length;
+    const varr = vals.reduce((a,b)=>a+(b-mu)*(b-mu),0) / vals.length;
+    return Math.sqrt(varr);
+  }
+
+  function updateLabels(){
+    els.nPtsVal.textContent = els.nPts.value;
+    els.noiseVal.textContent = Number(els.noise.value).toFixed(1);
+    els.seedVal.textContent = els.seed.value;
+    els.winAvgVal.textContent = els.winAvg.value;
+    els.winRegVal.textContent = els.winReg.value;
+    els.alphaVal.textContent = Number(els.alpha.value).toFixed(3);
+    els.betaVal.textContent = Number(els.beta.value).toFixed(4);
+  }
+
+  function plotAll(){
+    updateLabels();
+
+    const signalType = els.signalType.value;
+    const n = Number(els.nPts.value);
+    const noise = Number(els.noise.value);
+    const seed = Number(els.seed.value);
+    const wAvg = Number(els.winAvg.value);
+    const wReg = Number(els.winReg.value);
+    const alpha = Number(els.alpha.value);
+    const beta = Number(els.beta.value);
+
+    const {x, raw, truth, truthGrad} = generateSignal(signalType, n, noise, seed);
+
+    const avg = rollingAverage(raw, wAvg);
+    const gradAvg = gradientFromSignal(avg);
+
+    const reg = rollingRegression(raw, wReg);
+    const regY = reg.yhat;
+    const regSlope = reg.slope;
+
+    const ab = alphaBetaFilter(raw, alpha, beta, 1.0);
+    const abY = ab.pos;
+    const abV = ab.vel;
+
+    const avgStd = std(gradAvg);
+    const regStd = std(regSlope);
+    const abStd = std(abV);
+
+    els.mAvgStd.textContent = fmt(avgStd);
+    els.mRegStd.textContent = fmt(regStd);
+    els.mABStd.textContent = fmt(abStd);
+
+    const ranked = [
+      {name:'Avg', v:avgStd},
+      {name:'Reg', v:regStd},
+      {name:'α-β', v:abStd}
+    ].filter(o => Number.isFinite(o.v)).sort((a,b)=>a.v-b.v);
+    els.mBest.textContent = ranked.length ? ranked[0].name : '–';
+
+    const signalTraces = [];
+    if(els.showTruth.checked){
+      signalTraces.push({
+        x, y: truth, type:'scatter', mode:'lines',
+        name:'Ground truth',
+        line:{width:3, dash:'solid', color:'#4ade80'}
+      });
+    }
+    if(els.showRaw.checked){
+      signalTraces.push({
+        x, y: raw, type:'scatter', mode:'lines',
+        name:'Raw',
+        line:{width:1.5, color:'#9aa4b2'}
+      });
+    }
+    if(els.showAvg.checked){
+      signalTraces.push({
+        x, y: avg, type:'scatter', mode:'lines',
+        name:'Rolling average',
+        line:{width:3, color:'#fbbf24'}
+      });
+    }
+    if(els.showReg.checked){
+      signalTraces.push({
+        x, y: regY, type:'scatter', mode:'lines',
+        name:'Rolling regression',
+        line:{width:3, color:'#f87171'}
+      });
+    }
+    if(els.showAB.checked){
+      signalTraces.push({
+        x, y: abY, type:'scatter', mode:'lines',
+        name:'α-β output',
+        line:{width:3, color:'#6ea8fe'}
+      });
+    }
+
+    const gradTraces = [];
+    if(els.showGradTruth.checked){
+      gradTraces.push({
+        x, y: truthGrad, type:'scatter', mode:'lines',
+        name:'Truth gradient',
+        line:{width:3, color:'#4ade80'}
+      });
+    }
+    if(els.showGradAvg.checked){
+      gradTraces.push({
+        x, y: gradAvg, type:'scatter', mode:'lines',
+        name:'Avg gradient',
+        line:{width:2.5, color:'#fbbf24'}
+      });
+    }
+    if(els.showGradReg.checked){
+      gradTraces.push({
+        x, y: regSlope, type:'scatter', mode:'lines',
+        name:'Reg slope',
+        line:{width:2.5, color:'#f87171'}
+      });
+    }
+    if(els.showGradAB.checked){
+      gradTraces.push({
+        x, y: abV, type:'scatter', mode:'lines',
+        name:'α-β velocity',
+        line:{width:2.5, color:'#6ea8fe'}
+      });
+    }
+
+    const commonLayout = {
+      paper_bgcolor:'rgba(0,0,0,0)',
+      plot_bgcolor:'#0f141b',
+      font:{color:'#e6edf3', size:13},
+      margin:{l:54,r:18,t:36,b:42},
+      legend:{
+        orientation:'h',
+        yanchor:'bottom',
+        y:1.02,
+        xanchor:'left',
+        x:0,
+        bgcolor:'rgba(0,0,0,0)'
+      },
+      xaxis:{
+        title:'Sample index',
+        gridcolor:'#263040',
+        zerolinecolor:'#263040'
+      },
+      yaxis:{
+        gridcolor:'#263040',
+        zerolinecolor:'#263040'
+      },
+      dragmode:'pan'
+    };
+
+    Plotly.react('plotSignal', signalTraces, {
+      ...commonLayout,
+      title:{text:'Signal output comparison', x:0.01, xanchor:'left'},
+      yaxis:{...commonLayout.yaxis, title:'Value'}
+    }, {
+      responsive:true,
+      displayModeBar:true,
+      scrollZoom:true
+    });
+
+    Plotly.react('plotGrad', gradTraces, {
+      ...commonLayout,
+      title:{text:'Gradient / slope comparison', x:0.01, xanchor:'left'},
+      yaxis:{...commonLayout.yaxis, title:'Gradient'}
+    }, {
+      responsive:true,
+      displayModeBar:true,
+      scrollZoom:true
+    });
+  }
+
+  const bindIds = [
+    'signalType','nPts','noise','seed','winAvg','winReg','alpha','beta',
+    'showRaw','showTruth','showAvg','showReg','showAB',
+    'showGradTruth','showGradAvg','showGradReg','showGradAB'
+  ];
+  bindIds.forEach(id => els[id].addEventListener('input', plotAll));
+  bindIds.forEach(id => els[id].addEventListener('change', plotAll));
+
+  els.regenBtn.addEventListener('click', () => {
+    regenNonce++;
+    plotAll();
+  });
+
+  els.presetStable.addEventListener('click', () => {
+    els.signalType.value = 'noisy_ramp';
+    els.noise.value = 3.5;
+    els.winAvg.value = 21;
+    els.winReg.value = 31;
+    els.alpha.value = 0.05;
+    els.beta.value = 0.003;
+    plotAll();
+  });
+
+  updateLabels();
+  plotAll();
+})();
+</script>
+</body>
+</html>
