@@ -139,6 +139,15 @@ select,button{
 @media (max-width: 520px){
   .row2{grid-template-columns:1fr}
 }
+.preset-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.preset-grid button{
+  padding:10px 12px;
+  font-size:13px;
+}
 .checks{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -146,6 +155,7 @@ select,button{
 }
 @media (max-width: 520px){
   .checks{grid-template-columns:1fr}
+  .preset-grid{grid-template-columns:1fr}
 }
 .chk{
   display:flex;
@@ -394,7 +404,15 @@ canvas.mini{
 
         <div class="row2">
           <button id="regenBtn" class="btn-accent">Regenerate signal</button>
-          <button id="presetStable">Preset: stable gradient</button>
+          <button type="button" class="btn-accent" data-preset="stable_ramp">Stable ramp</button>
+        </div>
+
+        <div class="section-title">Usage presets</div>
+        <div class="preset-grid">
+          <button type="button" data-preset="step_response">Step response</button>
+          <button type="button" data-preset="periodic_signal">Periodic signal</button>
+          <button type="button" data-preset="curved_trend">Curved trend</button>
+          <button type="button" data-preset="heavy_smoothing">Heavy smoothing</button>
         </div>
 
         <div class="section-title">Visible traces</div>
@@ -486,7 +504,6 @@ canvas.mini{
     gammaVal: document.getElementById('gammaVal'),
 
     regenBtn: document.getElementById('regenBtn'),
-    presetStable: document.getElementById('presetStable'),
 
     showRaw: document.getElementById('showRaw'),
     showTruth: document.getElementById('showTruth'),
@@ -515,6 +532,7 @@ canvas.mini{
   };
 
   let regenNonce = 0;
+  const presetButtons = Array.from(document.querySelectorAll('[data-preset]'));
 
   // Logarithmic mapping for alpha slider (0–1000 → 0.001–1.0)
   const ALPHA_MIN = 0.001, ALPHA_MAX = 1.0, ALPHA_SLIDER_MAX = 1000;
@@ -1233,6 +1251,86 @@ canvas.mini{
     });
   }
 
+  const presets = {
+    stable_ramp:{
+      signalType:'noisy_ramp',
+      nPts:240,
+      noise:3.5,
+      sampleRate:100,
+      sineFreq:1.0,
+      winAvg:21,
+      winReg:31,
+      alpha:0.05,
+      beta:0.003,
+      gamma:0.00005
+    },
+    step_response:{
+      signalType:'step',
+      nPts:220,
+      noise:1.0,
+      sampleRate:80,
+      sineFreq:1.0,
+      winAvg:9,
+      winReg:15,
+      alpha:0.18,
+      beta:0.012,
+      gamma:0.000002
+    },
+    periodic_signal:{
+      signalType:'sine',
+      nPts:320,
+      noise:2.0,
+      sampleRate:180,
+      sineFreq:1.4,
+      winAvg:13,
+      winReg:19,
+      alpha:0.075,
+      beta:0.004,
+      gamma:0.00001
+    },
+    curved_trend:{
+      signalType:'piecewise',
+      nPts:260,
+      noise:1.7,
+      sampleRate:120,
+      sineFreq:0.8,
+      winAvg:17,
+      winReg:25,
+      alpha:0.06,
+      beta:0.004,
+      gamma:0.00002
+    },
+    heavy_smoothing:{
+      signalType:'noisy_ramp',
+      nPts:260,
+      noise:5.0,
+      sampleRate:100,
+      sineFreq:1.0,
+      winAvg:31,
+      winReg:41,
+      alpha:0.025,
+      beta:0.0012,
+      gamma:0.000005
+    }
+  };
+
+  function applyPreset(name){
+    const preset = presets[name];
+    if(!preset) return;
+
+    els.signalType.value = preset.signalType;
+    els.nPts.value = preset.nPts;
+    els.noise.value = preset.noise;
+    els.sampleRate.value = preset.sampleRate;
+    els.sineFreq.value = preset.sineFreq;
+    els.winAvg.value = preset.winAvg;
+    els.winReg.value = preset.winReg;
+    els.alpha.value = sliderFromAlpha(preset.alpha);
+    els.beta.value = sliderFromBeta(preset.beta);
+    els.gamma.value = sliderFromGamma(preset.gamma);
+    plotAll();
+  }
+
   const bindIds = [
     'signalType','nPts','noise','sampleRate','sineFreq','seed','winAvg','winReg','alpha','beta','gamma',
     'showRaw','showTruth','showAvg','showReg','showAB','showABG',
@@ -1246,15 +1344,8 @@ canvas.mini{
     plotAll();
   });
 
-  els.presetStable.addEventListener('click', () => {
-    els.signalType.value = 'noisy_ramp';
-    els.noise.value = 3.5;
-    els.winAvg.value = 21;
-    els.winReg.value = 31;
-    els.alpha.value = sliderFromAlpha(0.05);
-    els.beta.value = sliderFromBeta(0.003);
-    els.gamma.value = sliderFromGamma(0.00005);
-    plotAll();
+  presetButtons.forEach(btn => {
+    btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
   });
 
   updateLabels();
