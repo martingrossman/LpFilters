@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="description" content="Interactive playground to compare rolling average, rolling regression, alpha-beta, and alpha-beta-gamma filters." />
 <title>Rolling Filter Playground</title>
 <script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
 <style>
@@ -20,10 +21,20 @@
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
-body{padding:14px}
-.wrap{max-width:1400px;margin:0 auto}
-h1{font-size:24px;line-height:1.2;margin:0 0 6px 0}
-.sub{color:var(--muted);font-size:14px;margin-bottom:14px}
+body{padding:18px}
+.wrap{max-width:1440px;margin:0 auto}
+h1{
+  font-size:clamp(1.3rem, 1.2rem + 1.1vw, 2rem);
+  line-height:1.15;
+  margin:0 0 8px 0;
+  letter-spacing:-0.015em;
+}
+.sub{
+  color:var(--muted);
+  font-size:14px;
+  margin-bottom:16px;
+  max-width:900px;
+}
 .grid{
   display:grid;
   grid-template-columns:380px 1fr;
@@ -36,9 +47,9 @@ h1{font-size:24px;line-height:1.2;margin:0 0 6px 0}
 .card{
   background:linear-gradient(180deg,var(--panel),var(--panel2));
   border:1px solid var(--border);
-  border-radius:16px;
-  padding:14px;
-  box-shadow:0 8px 30px rgba(0,0,0,0.18);
+  border-radius:18px;
+  padding:16px;
+  box-shadow:0 12px 36px rgba(0,0,0,0.22);
 }
 .control-panel{
   position:sticky;
@@ -74,15 +85,22 @@ h1{font-size:24px;line-height:1.2;margin:0 0 6px 0}
 }
 .controls{
   display:grid;
-  gap:12px;
+  gap:14px;
 }
 .section-title{
-  font-size:13px;
+  font-size:12px;
   font-weight:700;
-  letter-spacing:.04em;
+  letter-spacing:.08em;
   text-transform:uppercase;
   color:var(--muted);
-  margin:4px 0 2px 0;
+  margin:8px 0 2px 0;
+  padding-top:10px;
+  border-top:1px solid rgba(154,164,178,0.18);
+}
+.controls > .section-title:first-child{
+  margin-top:0;
+  padding-top:0;
+  border-top:none;
 }
 .control{
   display:grid;
@@ -131,6 +149,13 @@ select,button{
   padding:12px 12px;
   font-size:15px;
 }
+select{
+  background-image:linear-gradient(45deg, transparent 50%, #8ea3bf 50%), linear-gradient(135deg, #8ea3bf 50%, transparent 50%);
+  background-position:calc(100% - 18px) calc(50% - 2px), calc(100% - 12px) calc(50% - 2px);
+  background-size:6px 6px, 6px 6px;
+  background-repeat:no-repeat;
+  appearance:none;
+}
 .row2{
   display:grid;
   grid-template-columns:1fr 1fr;
@@ -178,6 +203,7 @@ select,button{
   border:1px solid var(--border);
   border-radius:14px;
   padding:12px;
+  min-height:88px;
 }
 .metric .k{
   font-size:12px;
@@ -227,6 +253,34 @@ select,button{
   color:var(--muted);
   line-height:1.45;
 }
+.algo-list{
+  display:grid;
+  gap:8px;
+}
+.algo-item{
+  background:#0f141b;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:9px 10px;
+  font-size:12px;
+  line-height:1.4;
+  color:var(--muted);
+}
+.algo-item b{
+  color:var(--text);
+  font-weight:600;
+}
+.file-row{
+  display:grid;
+  gap:8px;
+}
+.file-status{
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.35;
+}
+.file-status.ok{ color:var(--good); }
+.file-status.err{ color:var(--bad); }
 .plot{
   height:760px;
 }
@@ -234,18 +288,52 @@ select,button{
   .plot{height:620px}
 }
 .footer-note{
-  margin-top:8px;
+  margin-top:10px;
   font-size:12px;
   color:var(--muted);
+  line-height:1.45;
 }
 button{
   cursor:pointer;
   transition:transform .05s ease, background .15s ease;
 }
+button:hover{
+  background:#131b25;
+}
 button:active{transform:translateY(1px)}
 .btn-accent{
   background:linear-gradient(180deg,#1b4f9c,#153d76);
   border-color:#285ea8;
+}
+.btn-secondary{
+  background:#101722;
+  border-color:#314055;
+}
+input:focus-visible, select:focus-visible, button:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
+@media (prefers-reduced-motion: reduce){
+  *{
+    animation:none !important;
+    transition:none !important;
+  }
+}
+.topbar{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:4px;
+}
+.badge{
+  font-size:12px;
+  color:#b7c3d3;
+  background:#0f141b;
+  border:1px solid rgba(154,164,178,0.25);
+  border-radius:999px;
+  padding:4px 10px;
+  white-space:nowrap;
 }
 .mini-preview{
   background:#0a0e14;
@@ -272,11 +360,28 @@ canvas.mini{
   text-align:right;
   margin-top:-4px;
 }
+@media (max-width: 700px){
+  body{padding:12px}
+  .card{padding:12px}
+  .topbar{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:6px;
+  }
+}
 </style>
 </head>
 <body>
+<noscript>
+  <div style="margin:0 auto;max-width:900px;padding:12px;border:1px solid #2d3748;border-radius:12px;background:#161b22;color:#e6edf3;">
+    JavaScript is required to run this interactive playground.
+  </div>
+</noscript>
 <div class="wrap">
-  <h1>Rolling Filter Playground</h1>
+  <div class="topbar">
+    <h1>Rolling Filter Playground</h1>
+    <div class="badge">Interactive filter comparison</div>
+  </div>
   <div class="sub">Compare rolling average, rolling regression, α-β, and α-β-γ filters on the same signal. Focus on output smoothness, gradient stability, and gain stability.</div>
 
   <div class="grid">
@@ -295,7 +400,19 @@ canvas.mini{
             <option value="step">Step</option>
             <option value="sine">Sine</option>
             <option value="piecewise">Piecewise trend</option>
+            <option value="custom_csv">Custom CSV</option>
           </select>
+        </div>
+
+        <div class="control">
+          <label for="csvFile">
+            <span>Custom CSV (time, signal)</span>
+          </label>
+          <div class="file-row">
+            <input id="csvFile" type="file" accept=".csv,text/csv" />
+            <button type="button" id="clearCsvBtn" class="btn-secondary">Clear custom CSV</button>
+            <div id="csvStatus" class="file-status">No CSV loaded. Max 1000 rows.</div>
+          </div>
         </div>
 
         <div class="control">
@@ -303,7 +420,7 @@ canvas.mini{
             <span>Samples</span>
             <span class="value" id="nPtsVal">200</span>
           </label>
-          <input id="nPts" type="range" min="50" max="600" step="10" value="200" />
+          <input id="nPts" type="range" min="50" max="1000" step="10" value="200" />
         </div>
 
         <div class="control">
@@ -393,18 +510,22 @@ canvas.mini{
             <span style="color:#14b8a6">α-β-γ out</span>&nbsp;
             <span style="color:rgba(154,164,178,0.7)">raw</span>
           </div>
-          <canvas id="miniSignal" class="mini" height="80"></canvas>
+          <canvas id="miniSignal" class="mini" height="80" aria-label="Mini signal preview chart"></canvas>
           <div class="mini-legend" style="margin-top:4px">
             Velocity — <span style="color:#6ea8fe">α-β vel</span>&nbsp;
             <span style="color:#14b8a6">α-β-γ vel</span>&nbsp;
             <span style="color:rgba(251,191,36,0.7)">avg grad</span>
           </div>
-          <canvas id="miniVel" class="mini" height="60"></canvas>
+          <canvas id="miniVel" class="mini" height="60" aria-label="Mini velocity preview chart"></canvas>
         </div>
 
         <div class="row2">
-          <button id="regenBtn" class="btn-accent">Regenerate signal</button>
+          <button id="regenBtn" class="btn-accent" type="button">Regenerate signal</button>
           <button type="button" class="btn-accent" data-preset="stable_ramp">Stable ramp</button>
+        </div>
+        <div class="row2">
+          <button type="button" id="resetDefaultsBtn" class="btn-secondary">Reset defaults</button>
+          <div></div>
         </div>
 
         <div class="section-title">Usage presets</div>
@@ -459,19 +580,58 @@ canvas.mini{
             <div class="metric-sub" id="mABGStabilitySub">–</div>
           </div>
           <div class="metric">
+            <div class="k">Time shift (abs) — Raw</div>
+            <div class="v" id="mRawLag">–</div>
+            <div class="metric-sub" id="mRawLagSub">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Time shift (abs) — Avg</div>
+            <div class="v" id="mAvgLag">–</div>
+            <div class="metric-sub" id="mAvgLagSub">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Time shift (abs) — Reg</div>
+            <div class="v" id="mRegLag">–</div>
+            <div class="metric-sub" id="mRegLagSub">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Time shift (abs) — α-β</div>
+            <div class="v" id="mABLag">–</div>
+            <div class="metric-sub" id="mABLagSub">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Time shift (abs) — α-β-γ</div>
+            <div class="v" id="mABGLag">–</div>
+            <div class="metric-sub" id="mABGLagSub">–</div>
+          </div>
+          <div class="metric">
             <div class="k">Best smoothest</div>
             <div class="v" id="mBest">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Best lowest lag</div>
+            <div class="v" id="mBestLag">–</div>
           </div>
         </div>
 
         <div class="hint">
           Lower gradient std means smoother derivative. For a very stable gradient, α should usually be modest, β much smaller than α, and γ smaller again. Stability check uses the normalized closed-loop error dynamics: spectral radius below 1 means asymptotically stable.
         </div>
+
+        <div class="section-title">Algorithm quick guide</div>
+        <div class="algo-list">
+          <div class="algo-item"><b>Ground truth:</b> ideal reference signal before measurement noise.</div>
+          <div class="algo-item"><b>Raw:</b> noisy measurements with no smoothing or model assumptions.</div>
+          <div class="algo-item"><b>Rolling average:</b> moving mean over a window; simple smoothing but adds lag.</div>
+          <div class="algo-item"><b>Rolling regression:</b> local line fit in a window; output is fitted value and slope.</div>
+          <div class="algo-item"><b>α-β filter:</b> constant-velocity tracker; α corrects position, β corrects velocity.</div>
+          <div class="algo-item"><b>α-β-γ filter:</b> constant-acceleration tracker; adds γ to adapt acceleration changes.</div>
+        </div>
       </div>
     </div>
 
     <div class="card">
-      <div id="plotCombined" class="plot"></div>
+      <div id="plotCombined" class="plot" role="img" aria-label="Combined signal and gradient comparison plots"></div>
       <div class="footer-note">Regression slope is estimated directly from a local linear fit. Average gradient is derived from the smoothed output, so it often lags more.</div>
     </div>
   </div>
@@ -504,6 +664,10 @@ canvas.mini{
     gammaVal: document.getElementById('gammaVal'),
 
     regenBtn: document.getElementById('regenBtn'),
+    resetDefaultsBtn: document.getElementById('resetDefaultsBtn'),
+    csvFile: document.getElementById('csvFile'),
+    clearCsvBtn: document.getElementById('clearCsvBtn'),
+    csvStatus: document.getElementById('csvStatus'),
 
     showRaw: document.getElementById('showRaw'),
     showTruth: document.getElementById('showTruth'),
@@ -525,14 +689,28 @@ canvas.mini{
     mABStabilitySub: document.getElementById('mABStabilitySub'),
     mABGStability: document.getElementById('mABGStability'),
     mABGStabilitySub: document.getElementById('mABGStabilitySub'),
+    mRawLag: document.getElementById('mRawLag'),
+    mRawLagSub: document.getElementById('mRawLagSub'),
+    mAvgLag: document.getElementById('mAvgLag'),
+    mAvgLagSub: document.getElementById('mAvgLagSub'),
+    mRegLag: document.getElementById('mRegLag'),
+    mRegLagSub: document.getElementById('mRegLagSub'),
+    mABLag: document.getElementById('mABLag'),
+    mABLagSub: document.getElementById('mABLagSub'),
+    mABGLag: document.getElementById('mABGLag'),
+    mABGLagSub: document.getElementById('mABGLagSub'),
     mBest: document.getElementById('mBest'),
+    mBestLag: document.getElementById('mBestLag'),
 
     miniSignal: document.getElementById('miniSignal'),
     miniVel: document.getElementById('miniVel')
   };
 
   let regenNonce = 0;
+  let pendingRaf = 0;
+  const defaultState = {};
   const presetButtons = Array.from(document.querySelectorAll('[data-preset]'));
+  let customCsvData = null;
 
   // Logarithmic mapping for alpha slider (0–1000 → 0.001–1.0)
   const ALPHA_MIN = 0.001, ALPHA_MAX = 1.0, ALPHA_SLIDER_MAX = 1000;
@@ -580,7 +758,64 @@ canvas.mini{
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
   }
 
+  function setCsvStatus(message, tone=''){
+    els.csvStatus.textContent = message;
+    els.csvStatus.classList.remove('ok', 'err');
+    if(tone) els.csvStatus.classList.add(tone);
+  }
+
+  function parseCustomCsvText(text){
+    const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    if(!lines.length) throw new Error('CSV is empty.');
+
+    const sample = lines[0];
+    const delimCandidates = [',', ';', '\t'];
+    let delim = ',';
+    let bestCount = -1;
+    for(const d of delimCandidates){
+      const c = sample.split(d).length;
+      if(c > bestCount){ bestCount = c; delim = d; }
+    }
+
+    const rows = [];
+    for(const line of lines){
+      const parts = line.split(delim).map(s => s.trim());
+      if(parts.length < 2) continue;
+      const t = Number(parts[0]);
+      const y = Number(parts[1]);
+      if(!Number.isFinite(t) || !Number.isFinite(y)) continue; // skip header/invalid rows
+      rows.push({t, y});
+    }
+
+    if(rows.length < 2) throw new Error('Need at least 2 numeric rows (time,signal).');
+    if(rows.length > 1000) throw new Error('CSV exceeds 1000 numeric rows.');
+    for(let i=1;i<rows.length;i++){
+      if(!(rows[i].t > rows[i-1].t)){
+        throw new Error('Time column must be strictly increasing.');
+      }
+    }
+
+    const t0 = rows[0].t;
+    const x = rows.map(r => r.t - t0);
+    const truth = rows.map(r => r.y);
+    const deltas = [];
+    for(let i=1;i<x.length;i++) deltas.push(x[i] - x[i-1]);
+    deltas.sort((a,b) => a - b);
+    const dt = deltas[Math.floor(deltas.length / 2)] || 1;
+    const sampleRate = dt > 0 ? (1 / dt) : 1;
+
+    return {x, truth, dt, sampleRate};
+  }
+
   function generateSignal(type, n, noise, seed, sampleRate, sineFreq){
+    if(type === 'custom_csv' && customCsvData){
+      const x = customCsvData.x.slice();
+      const truth = customCsvData.truth.slice();
+      const truthGrad = gradientFromSignalWithTime(truth, x);
+      const raw = truth.slice();
+      return {x, dt: customCsvData.dt, raw, truth, truthGrad};
+    }
+
     const rng = rngFactory((seed + regenNonce * 1009) >>> 0);
     const dt = 1 / sampleRate;
     const x = Array.from({length:n}, (_,i)=>i * dt);
@@ -650,6 +885,23 @@ canvas.mini{
       g[i] = (arr[i+1] - arr[i-1]) / 2;
     }
     g[n-1] = arr[n-1] - arr[n-2];
+    return g;
+  }
+
+  function gradientFromSignalWithTime(arr, x){
+    const n = arr.length;
+    const g = new Array(n).fill(NaN);
+    if(n === 0) return g;
+    if(n === 1){ g[0] = 0; return g; }
+
+    const dx0 = x[1] - x[0];
+    g[0] = Math.abs(dx0) > 1e-12 ? (arr[1] - arr[0]) / dx0 : 0;
+    for(let i=1;i<n-1;i++){
+      const dx = x[i+1] - x[i-1];
+      g[i] = Math.abs(dx) > 1e-12 ? (arr[i+1] - arr[i-1]) / dx : 0;
+    }
+    const dxn = x[n-1] - x[n-2];
+    g[n-1] = Math.abs(dxn) > 1e-12 ? (arr[n-1] - arr[n-2]) / dxn : 0;
     return g;
   }
 
@@ -746,6 +998,65 @@ canvas.mini{
     const mu = vals.reduce((a,b)=>a+b,0) / vals.length;
     const varr = vals.reduce((a,b)=>a+(b-mu)*(b-mu),0) / vals.length;
     return Math.sqrt(varr);
+  }
+
+  // Best alignment by time shift: find the lag (in samples) that minimizes
+  // MSE between an output signal and the ground-truth.
+  // lagSamples > 0 means the output is delayed (truth matches later output samples).
+  function bestLagAlignment(truth, output, maxLagSamples, dt){
+    const n = Math.min(truth.length, output.length);
+    if(n < 2 || !Number.isFinite(maxLagSamples) || maxLagSamples < 0){
+      return {lagSamples:0, lagSec:0, alignedMse:NaN, alignedRmse:NaN};
+    }
+
+    const cap = Math.min(maxLagSamples, n - 1);
+    let bestLag = 0;
+    let bestMse = Infinity;
+    let bestCount = 0;
+
+    for(let k = -cap; k <= cap; k++){
+      // Compare truth[i] with output[i + k] (output shifted by k).
+      const iStart = Math.max(0, -k);
+      const iEnd = Math.min(n, n - k);
+
+      let sse = 0;
+      let count = 0;
+      for(let i = iStart; i < iEnd; i++){
+        const a = truth[i];
+        const b = output[i + k];
+        if(!Number.isFinite(a) || !Number.isFinite(b)) continue;
+        const d = a - b;
+        sse += d * d;
+        count++;
+      }
+
+      if(count < 2) continue;
+      const mse = sse / count;
+      if(mse < bestMse){
+        bestMse = mse;
+        bestLag = k;
+        bestCount = count;
+      }
+    }
+
+    if(!Number.isFinite(bestMse) || bestCount < 2){
+      return {lagSamples:0, lagSec:0, alignedMse:NaN, alignedRmse:NaN};
+    }
+
+    const alignedRmse = Math.sqrt(bestMse);
+    return {lagSamples: bestLag, lagSec: bestLag * dt, alignedMse: bestMse, alignedRmse};
+  }
+
+  function renderLagMetric(elValue, elSub, lagResult){
+    if(Number.isFinite(lagResult.lagSec)){
+      elValue.textContent = `${Math.abs(lagResult.lagSec * 1000).toFixed(1)} ms`;
+      const sign = lagResult.lagSamples >= 0 ? '+' : '';
+      const direction = lagResult.lagSamples > 0 ? 'delayed' : (lagResult.lagSamples < 0 ? 'advanced' : 'aligned');
+      elSub.textContent = `lag=${sign}${lagResult.lagSamples} samples (${direction}) · aligned RMSE=${lagResult.alignedRmse.toFixed(2)}`;
+    }else{
+      elValue.textContent = '–';
+      elSub.textContent = '–';
+    }
   }
 
   function matMul(a, b){
@@ -996,9 +1307,14 @@ canvas.mini{
   // ────────────────────────────────────────────────────────────────────────
 
   function updateLabels(){
-    els.nPtsVal.textContent = els.nPts.value;
+    if(els.signalType.value === 'custom_csv' && customCsvData){
+      els.nPtsVal.textContent = customCsvData.truth.length;
+      els.sampleRateVal.textContent = customCsvData.sampleRate.toFixed(2);
+    }else{
+      els.nPtsVal.textContent = els.nPts.value;
+      els.sampleRateVal.textContent = els.sampleRate.value;
+    }
     els.noiseVal.textContent = Number(els.noise.value).toFixed(1);
-    els.sampleRateVal.textContent = els.sampleRate.value;
     els.sineFreqVal.textContent = Number(els.sineFreq.value).toFixed(2);
     els.seedVal.textContent = els.seed.value;
     els.winAvgVal.textContent = els.winAvg.value;
@@ -1012,9 +1328,9 @@ canvas.mini{
     updateLabels();
 
     const signalType = els.signalType.value;
-    const n = Number(els.nPts.value);
+    let n = Number(els.nPts.value);
     const noise = Number(els.noise.value);
-    const sampleRate = Number(els.sampleRate.value);
+    let sampleRate = Number(els.sampleRate.value);
     const sineFreq = Number(els.sineFreq.value);
     const seed = Number(els.seed.value);
     const wAvg = Number(els.winAvg.value);
@@ -1022,6 +1338,11 @@ canvas.mini{
     const alpha = alphaFromSlider(Number(els.alpha.value));
     const beta = betaFromSlider(Number(els.beta.value));
     const gamma = gammaFromSlider(Number(els.gamma.value));
+
+    if(signalType === 'custom_csv' && customCsvData){
+      n = customCsvData.truth.length;
+      sampleRate = customCsvData.sampleRate;
+    }
 
     const {x, dt, raw, truth, truthGrad} = generateSignal(signalType, n, noise, seed, sampleRate, sineFreq);
 
@@ -1054,6 +1375,30 @@ canvas.mini{
     els.mABGStd.textContent = fmt(abgStd);
     renderStability(els.mABStability, els.mABStabilitySub, abStability);
     renderStability(els.mABGStability, els.mABGStabilitySub, abgStability);
+
+    const maxLagSamples = Math.min(Math.floor(sampleRate * 0.25), 80, n - 1);
+    const rawLag = bestLagAlignment(truth, raw, maxLagSamples, dt);
+    const avgLag = bestLagAlignment(truth, avg, maxLagSamples, dt);
+    const regLag = bestLagAlignment(truth, regY, maxLagSamples, dt);
+    const abLag = bestLagAlignment(truth, abY, maxLagSamples, dt);
+    const abgLag = bestLagAlignment(truth, abgY, maxLagSamples, dt);
+
+    renderLagMetric(els.mRawLag, els.mRawLagSub, rawLag);
+    renderLagMetric(els.mAvgLag, els.mAvgLagSub, avgLag);
+    renderLagMetric(els.mRegLag, els.mRegLagSub, regLag);
+    renderLagMetric(els.mABLag, els.mABLagSub, abLag);
+    renderLagMetric(els.mABGLag, els.mABGLagSub, abgLag);
+
+    const lagRanked = [
+      {name:'Raw', lag:rawLag},
+      {name:'Avg', lag:avgLag},
+      {name:'Reg', lag:regLag},
+      {name:'α-β', lag:abLag},
+      {name:'α-β-γ', lag:abgLag}
+    ]
+      .filter(o => Number.isFinite(o.lag.lagSec))
+      .sort((a,b) => Math.abs(a.lag.lagSec) - Math.abs(b.lag.lagSec));
+    els.mBestLag.textContent = lagRanked.length ? lagRanked[0].name : '–';
 
     const ranked = [
       {name:'Avg', v:avgStd},
@@ -1251,6 +1596,14 @@ canvas.mini{
     });
   }
 
+  function schedulePlot(){
+    if(pendingRaf) return;
+    pendingRaf = requestAnimationFrame(() => {
+      pendingRaf = 0;
+      plotAll();
+    });
+  }
+
   const presets = {
     stable_ramp:{
       signalType:'noisy_ramp',
@@ -1331,23 +1684,75 @@ canvas.mini{
     plotAll();
   }
 
+  function captureDefaults(){
+    const ids = [
+      'signalType','nPts','noise','sampleRate','sineFreq','seed',
+      'winAvg','winReg','alpha','beta','gamma',
+      'showRaw','showTruth','showAvg','showReg','showAB','showABG',
+      'showGradTruth','showGradAvg','showGradReg','showGradAB','showGradABG'
+    ];
+    ids.forEach(id => {
+      const el = els[id];
+      defaultState[id] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+  }
+
+  function restoreDefaults(){
+    Object.keys(defaultState).forEach(id => {
+      const el = els[id];
+      if(!el) return;
+      if(el.type === 'checkbox') el.checked = defaultState[id];
+      else el.value = defaultState[id];
+    });
+    regenNonce = 0;
+    plotAll();
+  }
+
   const bindIds = [
     'signalType','nPts','noise','sampleRate','sineFreq','seed','winAvg','winReg','alpha','beta','gamma',
     'showRaw','showTruth','showAvg','showReg','showAB','showABG',
     'showGradTruth','showGradAvg','showGradReg','showGradAB','showGradABG'
   ];
-  bindIds.forEach(id => els[id].addEventListener('input', plotAll));
+  bindIds.forEach(id => els[id].addEventListener('input', schedulePlot));
   bindIds.forEach(id => els[id].addEventListener('change', plotAll));
 
   els.regenBtn.addEventListener('click', () => {
     regenNonce++;
     plotAll();
   });
+  els.resetDefaultsBtn.addEventListener('click', restoreDefaults);
 
   presetButtons.forEach(btn => {
     btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
   });
 
+  els.csvFile.addEventListener('change', async () => {
+    const file = els.csvFile.files && els.csvFile.files[0];
+    if(!file) return;
+    try{
+      const text = await file.text();
+      customCsvData = parseCustomCsvText(text);
+      els.signalType.value = 'custom_csv';
+      setCsvStatus(`Loaded ${customCsvData.truth.length} rows from ${file.name}.`, 'ok');
+      plotAll();
+    }catch(err){
+      customCsvData = null;
+      setCsvStatus(`CSV error: ${err.message}`, 'err');
+      if(els.signalType.value === 'custom_csv') els.signalType.value = 'noisy_ramp';
+      plotAll();
+    }
+  });
+
+  els.clearCsvBtn.addEventListener('click', () => {
+    customCsvData = null;
+    els.csvFile.value = '';
+    setCsvStatus('No CSV loaded. Max 1000 rows.');
+    if(els.signalType.value === 'custom_csv') els.signalType.value = 'noisy_ramp';
+    plotAll();
+  });
+
+  captureDefaults();
+  setCsvStatus('No CSV loaded. Max 1000 rows.');
   updateLabels();
   plotAll();
 })();
