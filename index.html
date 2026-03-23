@@ -429,7 +429,7 @@ canvas.mini{
           <div class="file-row">
             <input id="csvFile" type="file" accept=".csv,text/csv" />
             <button type="button" id="clearCsvBtn" class="btn-secondary">Clear custom CSV</button>
-            <div id="csvStatus" class="file-status">No CSV loaded. Max 1000 rows.</div>
+            <div id="csvStatus" class="file-status">No CSV loaded. Max 5000 rows.</div>
           </div>
         </div>
 
@@ -808,7 +808,7 @@ canvas.mini{
     }
 
     if(rows.length < 2) throw new Error('Need at least 2 numeric rows (time,signal).');
-    if(rows.length > 1000) throw new Error('CSV exceeds 1000 numeric rows.');
+    if(rows.length > 5000) throw new Error('CSV exceeds 5000 numeric rows.');
     for(let i=1;i<rows.length;i++){
       if(!(rows[i].t > rows[i-1].t)){
         throw new Error('Time column must be strictly increasing.');
@@ -1769,7 +1769,7 @@ canvas.mini{
   els.clearCsvBtn.addEventListener('click', () => {
     customCsvData = null;
     els.csvFile.value = '';
-    setCsvStatus('No CSV loaded. Max 1000 rows.');
+    setCsvStatus('No CSV loaded. Max 5000 rows.');
     if(els.signalType.value === 'custom_csv') els.signalType.value = 'noisy_ramp';
     plotAll();
   });
