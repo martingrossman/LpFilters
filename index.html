@@ -532,7 +532,7 @@ canvas.mini{
           <div class="mini-legend" style="margin-top:4px">
             Velocity — <span style="color:#6ea8fe">α-β vel</span>&nbsp;
             <span style="color:#14b8a6">α-β-γ vel</span>&nbsp;
-            <span style="color:rgba(251,191,36,0.7)">avg grad</span>
+            <span style="color:rgba(251, 190, 36, 0.7)">avg grad</span>
           </div>
           <canvas id="miniVel" class="mini" height="60" aria-label="Mini velocity preview chart"></canvas>
         </div>
@@ -925,7 +925,7 @@ canvas.mini{
     return g;
   }
 
-  function rollingRegression(arr, w){
+  function rollingRegression(arr, w, xArr=null){
     const n = arr.length;
     const yhat = new Array(n).fill(NaN);
     const slope = new Array(n).fill(NaN);
@@ -933,17 +933,17 @@ canvas.mini{
     for(let i=0;i<n;i++){
       const start = Math.max(0, i - w + 1);
       const m = i - start + 1;
-      let sumY = 0;
-      let sumTY = 0;
+      let sumT = 0, sumT2 = 0, sumY = 0, sumTY = 0;
 
       for(let k=0;k<m;k++){
+        const t = xArr ? (xArr[start + k] - xArr[start]) : k;
         const y = arr[start + k];
+        sumT += t;
+        sumT2 += t * t;
         sumY += y;
-        sumTY += k * y;
+        sumTY += t * y;
       }
 
-      const sumT = (m-1)*m/2;
-      const sumT2 = (m-1)*m*(2*m-1)/6;
       const denom = m*sumT2 - sumT*sumT;
 
       let a = 0;
@@ -954,13 +954,14 @@ canvas.mini{
         b = (sumY - a*sumT) / m;
       }
 
-      yhat[i] = a * (m - 1) + b;
+      const tEnd = xArr ? (xArr[i] - xArr[start]) : (m - 1);
+      yhat[i] = a * tEnd + b;
       slope[i] = a;
     }
     return {yhat, slope};
   }
 
-  function alphaBetaFilter(arr, alpha, beta, dt=1){
+  function alphaBetaFilter(arr, alpha, beta, dt=1, xArr=null){
     const n = arr.length;
     const pos = new Array(n).fill(NaN);
     const vel = new Array(n).fill(NaN);
@@ -973,17 +974,18 @@ canvas.mini{
     vel[0] = v;
 
     for(let i=1;i<n;i++){
-      const xPred = x + v*dt;
+      const step = xArr ? (xArr[i] - xArr[i-1]) : dt;
+      const xPred = x + v*step;
       const r = arr[i] - xPred;
       x = xPred + alpha * r;
-      v = v + beta * r / dt;
+      v = v + beta * r / step;
       pos[i] = x;
       vel[i] = v;
     }
     return {pos, vel};
   }
 
-  function alphaBetaGammaFilter(arr, alpha, beta, gamma, dt=1){
+  function alphaBetaGammaFilter(arr, alpha, beta, gamma, dt=1, xArr=null){
     const n = arr.length;
     const pos = new Array(n).fill(NaN);
     const vel = new Array(n).fill(NaN);
@@ -999,12 +1001,13 @@ canvas.mini{
     acc[0] = a;
 
     for(let i=1;i<n;i++){
-      const xPred = x + v*dt + 0.5*a*dt*dt;
-      const vPred = v + a*dt;
+      const step = xArr ? (xArr[i] - xArr[i-1]) : dt;
+      const xPred = x + v*step + 0.5*a*step*step;
+      const vPred = v + a*step;
       const r = arr[i] - xPred;
       x = xPred + alpha * r;
-      v = vPred + beta * r / dt;
-      a = a + 2 * gamma * r / (dt * dt);
+      v = vPred + beta * r / step;
+      a = a + 2 * gamma * r / (step * step);
       pos[i] = x;
       vel[i] = v;
       acc[i] = a;
@@ -1365,20 +1368,20 @@ canvas.mini{
     }
 
     const {x, dt, raw, truth, truthGrad} = generateSignal(signalType, n, noise, seed, sampleRate, sineFreq);
+    const nonUniform = signalType === 'custom_csv';
 
     const avg = rollingAverage(raw, wAvg);
-    const gradAvgRaw = gradientFromSignal(avg);
-    const gradAvg = gradAvgRaw.map(v => v / dt);
+    const gradAvg = nonUniform ? gradientFromSignalWithTime(avg, x) : gradientFromSignal(avg).map(v => v / dt);
 
-    const reg = rollingRegression(raw, wReg);
+    const reg = rollingRegression(raw, wReg, nonUniform ? x : null);
     const regY = reg.yhat;
-    const regSlope = reg.slope.map(v => v / dt);
+    const regSlope = nonUniform ? reg.slope : reg.slope.map(v => v / dt);
 
-    const ab = alphaBetaFilter(raw, alpha, beta, dt);
+    const ab = alphaBetaFilter(raw, alpha, beta, dt, nonUniform ? x : null);
     const abY = ab.pos;
     const abV = ab.vel;
 
-    const abg = alphaBetaGammaFilter(raw, alpha, beta, gamma, dt);
+    const abg = alphaBetaGammaFilter(raw, alpha, beta, gamma, dt, nonUniform ? x : null);
     const abgY = abg.pos;
     const abgV = abg.vel;
 
