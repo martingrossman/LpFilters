@@ -41,8 +41,26 @@ h1{
   gap:14px;
   align-items:start;
 }
+.plot-metrics-layout{
+  display:grid;
+  grid-template-columns:1fr 320px;
+  gap:14px;
+  align-items:start;
+}
+.metrics-panel{
+  position:sticky;
+  top:18px;
+  max-height:calc(100vh - 36px);
+  overflow-y:auto;
+}
 @media (max-width: 980px){
   .grid{grid-template-columns:1fr}
+  .plot-metrics-layout{grid-template-columns:1fr}
+  .metrics-panel{
+    position:static;
+    max-height:none;
+    overflow:visible;
+  }
 }
 .card{
   background:linear-gradient(180deg,var(--panel),var(--panel2));
@@ -551,6 +569,24 @@ canvas.mini{
           <label class="chk"><input type="checkbox" id="showGradABG" checked>α-β-γ velocity</label>
         </div>
 
+        <div class="section-title">Algorithm quick guide</div>
+        <div class="algo-list">
+          <div class="algo-item"><b>Ground truth:</b> ideal reference signal before measurement noise.</div>
+          <div class="algo-item"><b>Raw:</b> noisy measurements with no smoothing or model assumptions.</div>
+          <div class="algo-item"><b>Rolling average:</b> moving mean over a window; simple smoothing but adds lag.</div>
+          <div class="algo-item"><b>Rolling regression:</b> local line fit in a window; output is fitted value and slope.</div>
+          <div class="algo-item"><b>α-β filter:</b> constant-velocity tracker; α corrects position, β corrects velocity.</div>
+          <div class="algo-item"><b>α-β-γ filter:</b> constant-acceleration tracker; adds γ to adapt acceleration changes.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="plot-metrics-layout">
+      <div class="card">
+        <div id="plotCombined" class="plot" role="img" aria-label="Combined signal and gradient comparison plots"></div>
+        <div class="footer-note">Regression slope is estimated directly from a local linear fit. Average gradient is derived from the smoothed output, so it often lags more.</div>
+      </div>
+      <aside class="card metrics-panel" aria-label="Quick metrics">
         <div class="section-title">Quick metrics</div>
         <div class="metrics">
           <div class="metric">
@@ -613,26 +649,10 @@ canvas.mini{
             <div class="v" id="mBestLag">–</div>
           </div>
         </div>
-
         <div class="hint">
           Lower gradient std means smoother derivative. For a very stable gradient, α should usually be modest, β much smaller than α, and γ smaller again. Stability check uses the normalized closed-loop error dynamics: spectral radius below 1 means asymptotically stable.
         </div>
-
-        <div class="section-title">Algorithm quick guide</div>
-        <div class="algo-list">
-          <div class="algo-item"><b>Ground truth:</b> ideal reference signal before measurement noise.</div>
-          <div class="algo-item"><b>Raw:</b> noisy measurements with no smoothing or model assumptions.</div>
-          <div class="algo-item"><b>Rolling average:</b> moving mean over a window; simple smoothing but adds lag.</div>
-          <div class="algo-item"><b>Rolling regression:</b> local line fit in a window; output is fitted value and slope.</div>
-          <div class="algo-item"><b>α-β filter:</b> constant-velocity tracker; α corrects position, β corrects velocity.</div>
-          <div class="algo-item"><b>α-β-γ filter:</b> constant-acceleration tracker; adds γ to adapt acceleration changes.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div id="plotCombined" class="plot" role="img" aria-label="Combined signal and gradient comparison plots"></div>
-      <div class="footer-note">Regression slope is estimated directly from a local linear fit. Average gradient is derived from the smoothed output, so it often lags more.</div>
+      </aside>
     </div>
   </div>
 </div>
