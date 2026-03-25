@@ -1,0 +1,1968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<meta name="description" content="Interactive playground to compare rolling average, rolling regression, alpha-beta, and alpha-beta-gamma filters." />
+<title>Rolling Filter Playground</title>
+<script src="https://cdn.plot.ly/plotly-2.30.0.min.js"></script>
+<style>
+:root{
+  --bg:#0d1117;
+  --panel:#161b22;
+  --panel2:#1f2630;
+  --border:#2d3748;
+  --text:#e6edf3;
+  --muted:#9aa4b2;
+  --accent:#6ea8fe;
+  --good:#4ade80;
+  --warn:#fbbf24;
+  --bad:#f87171;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+body{padding:18px}
+.wrap{max-width:1440px;margin:0 auto}
+h1{
+  font-size:clamp(1.3rem, 1.2rem + 1.1vw, 2rem);
+  line-height:1.15;
+  margin:0 0 8px 0;
+  letter-spacing:-0.015em;
+}
+.sub{
+  color:var(--muted);
+  font-size:14px;
+  margin-bottom:16px;
+  max-width:900px;
+}
+.grid{
+  display:grid;
+  grid-template-columns:380px 1fr;
+  gap:14px;
+  align-items:start;
+}
+.plot-metrics-layout{
+  display:grid;
+  grid-template-columns:1fr 320px;
+  gap:14px;
+  align-items:start;
+}
+.metrics-panel{
+  position:sticky;
+  top:18px;
+  max-height:calc(100vh - 36px);
+  overflow-y:auto;
+}
+@media (max-width: 980px){
+  .grid{grid-template-columns:1fr}
+  .plot-metrics-layout{grid-template-columns:1fr}
+  .metrics-panel{
+    position:static;
+    max-height:none;
+    overflow:visible;
+  }
+}
+.card{
+  background:linear-gradient(180deg,var(--panel),var(--panel2));
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:16px;
+  box-shadow:0 12px 36px rgba(0,0,0,0.22);
+}
+.control-panel{
+  position:sticky;
+  top:14px;
+  max-height:calc(100vh - 28px);
+  overflow-y:auto;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+}
+.control-panel::-webkit-scrollbar{
+  width:10px;
+}
+.control-panel::-webkit-scrollbar-track{
+  background:transparent;
+}
+.control-panel::-webkit-scrollbar-thumb{
+  background:#2b3442;
+  border-radius:999px;
+  border:2px solid transparent;
+  background-clip:padding-box;
+}
+.control-panel{
+  scrollbar-width:thin;
+  scrollbar-color:#2b3442 transparent;
+}
+@media (max-width: 980px){
+  .control-panel{
+    position:static;
+    max-height:none;
+    overflow:visible;
+    overscroll-behavior:auto;
+  }
+}
+.controls{
+  display:grid;
+  gap:14px;
+}
+.section-title{
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--muted);
+  margin:8px 0 2px 0;
+  padding-top:10px;
+  border-top:1px solid rgba(154,164,178,0.18);
+}
+.controls > .section-title:first-child{
+  margin-top:0;
+  padding-top:0;
+  border-top:none;
+}
+.control{
+  display:grid;
+  gap:6px;
+}
+.control label{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  font-size:14px;
+}
+.control .value{
+  color:var(--accent);
+  font-variant-numeric:tabular-nums;
+  white-space:nowrap;
+}
+input[type="range"]{
+  width:100%;
+  appearance:none;
+  height:36px;
+  background:transparent;
+}
+input[type="range"]::-webkit-slider-runnable-track{
+  height:6px;border-radius:999px;background:#2b3442;
+}
+input[type="range"]::-webkit-slider-thumb{
+  appearance:none;width:24px;height:24px;border-radius:50%;
+  background:var(--accent);border:none;margin-top:-9px;
+  box-shadow:0 2px 10px rgba(110,168,254,.45);
+}
+input[type="range"]::-moz-range-track{
+  height:6px;border-radius:999px;background:#2b3442;
+}
+input[type="range"]::-moz-range-thumb{
+  width:24px;height:24px;border-radius:50%;
+  background:var(--accent);border:none;
+  box-shadow:0 2px 10px rgba(110,168,254,.45);
+}
+select,button{
+  width:100%;
+  background:#0f141b;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px 12px;
+  font-size:15px;
+}
+select{
+  background-image:linear-gradient(45deg, transparent 50%, #8ea3bf 50%), linear-gradient(135deg, #8ea3bf 50%, transparent 50%);
+  background-position:calc(100% - 18px) calc(50% - 2px), calc(100% - 12px) calc(50% - 2px);
+  background-size:6px 6px, 6px 6px;
+  background-repeat:no-repeat;
+  appearance:none;
+}
+.row2{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+@media (max-width: 520px){
+  .row2{grid-template-columns:1fr}
+}
+.preset-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.preset-grid button{
+  padding:10px 12px;
+  font-size:13px;
+}
+.checks{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px 12px;
+}
+@media (max-width: 520px){
+  .checks{grid-template-columns:1fr}
+  .preset-grid{grid-template-columns:1fr}
+}
+.chk{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:14px;
+  min-height:36px;
+}
+.chk input{width:18px;height:18px}
+.metrics{
+  display:grid;
+  grid-template-columns:repeat(2, minmax(0,1fr));
+  gap:10px;
+}
+@media (max-width: 520px){
+  .metrics{grid-template-columns:1fr}
+}
+.metric{
+  background:#0f141b;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+  min-height:88px;
+}
+.metric .k{
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+.metric .v{
+  font-size:22px;
+  font-weight:700;
+  font-variant-numeric:tabular-nums;
+}
+.metric-sub{
+  font-size:12px;
+  color:var(--muted);
+  margin-top:6px;
+  line-height:1.35;
+}
+.stability-pill{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:30px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:13px;
+  line-height:1;
+  font-weight:700;
+  letter-spacing:.02em;
+}
+.stability-pill.stable{
+  background:rgba(74,222,128,0.14);
+  color:var(--good);
+  border:1px solid rgba(74,222,128,0.28);
+}
+.stability-pill.marginal{
+  background:rgba(251,191,36,0.14);
+  color:var(--warn);
+  border:1px solid rgba(251,191,36,0.28);
+}
+.stability-pill.unstable{
+  background:rgba(248,113,113,0.14);
+  color:var(--bad);
+  border:1px solid rgba(248,113,113,0.28);
+}
+.hint{
+  font-size:13px;
+  color:var(--muted);
+  line-height:1.45;
+}
+.algo-list{
+  display:grid;
+  gap:8px;
+}
+.algo-item{
+  background:#0f141b;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:9px 10px;
+  font-size:12px;
+  line-height:1.4;
+  color:var(--muted);
+}
+.algo-item b{
+  color:var(--text);
+  font-weight:600;
+}
+.file-row{
+  display:grid;
+  gap:8px;
+}
+.file-status{
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.35;
+}
+.file-status.ok{ color:var(--good); }
+.file-status.err{ color:var(--bad); }
+.plot{
+  height:760px;
+  touch-action:none;
+}
+@media (max-width: 700px){
+  .plot{height:620px}
+}
+.footer-note{
+  margin-top:10px;
+  font-size:12px;
+  color:var(--muted);
+  line-height:1.45;
+}
+button{
+  cursor:pointer;
+  transition:transform .05s ease, background .15s ease;
+}
+button:hover{
+  background:#131b25;
+}
+button:active{transform:translateY(1px)}
+.btn-accent{
+  background:linear-gradient(180deg,#1b4f9c,#153d76);
+  border-color:#285ea8;
+}
+.btn-secondary{
+  background:#101722;
+  border-color:#314055;
+}
+.zoom-grid{
+  display:grid;
+  grid-template-columns:repeat(4, 1fr);
+  gap:6px;
+}
+.zoom-grid button{
+  padding:8px 4px;
+  font-size:12px;
+  text-align:center;
+}
+.zoom-grid button.active{
+  background:linear-gradient(180deg,#1b4f9c,#153d76);
+  border-color:#285ea8;
+}
+input:focus-visible, select:focus-visible, button:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
+@media (prefers-reduced-motion: reduce){
+  *{
+    animation:none !important;
+    transition:none !important;
+  }
+}
+.topbar{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  justify-content:space-between;
+  margin-bottom:4px;
+}
+.badge{
+  font-size:12px;
+  color:#b7c3d3;
+  background:#0f141b;
+  border:1px solid rgba(154,164,178,0.25);
+  border-radius:999px;
+  padding:4px 10px;
+  white-space:nowrap;
+}
+.mini-preview{
+  background:#0a0e14;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:8px 10px;
+  display:grid;
+  gap:4px;
+}
+.mini-legend{
+  font-size:11px;
+  color:var(--muted);
+}
+.mini-legend span{ font-weight:600; }
+canvas.mini{
+  display:block;
+  width:100%;
+  border-radius:6px;
+  background:#0f141b;
+}
+.log-hint{
+  font-size:11px;
+  color:var(--muted);
+  text-align:right;
+  margin-top:-4px;
+}
+@media (max-width: 700px){
+  body{padding:12px}
+  .card{padding:12px}
+  .topbar{
+    flex-direction:column;
+    align-items:flex-start;
+    gap:6px;
+  }
+}
+</style>
+</head>
+<body>
+<noscript>
+  <div style="margin:0 auto;max-width:900px;padding:12px;border:1px solid #2d3748;border-radius:12px;background:#161b22;color:#e6edf3;">
+    JavaScript is required to run this interactive playground.
+  </div>
+</noscript>
+<div class="wrap">
+  <div class="topbar">
+    <h1>Rolling Filter Playground</h1>
+    <div class="badge">Interactive filter comparison</div>
+  </div>
+  <div class="sub">Compare rolling average, rolling regression, α-β, and α-β-γ filters on the same signal. Focus on output smoothness, gradient stability, and gain stability.</div>
+
+  <div class="grid">
+    <div class="card control-panel">
+      <div class="controls">
+        <div class="section-title">Signal</div>
+
+        <div class="control">
+          <label for="signalType">
+            <span>Signal type</span>
+          </label>
+          <select id="signalType">
+            <option value="noisy_ramp" selected>Noisy ramp</option>
+            <option value="constant">Constant</option>
+            <option value="ramp">Ramp</option>
+            <option value="step">Step</option>
+            <option value="sine">Sine</option>
+            <option value="piecewise">Piecewise trend</option>
+            <option value="custom_csv">Custom CSV</option>
+          </select>
+        </div>
+
+        <div class="control">
+          <label for="csvFile">
+            <span>Custom CSV (time, signal)</span>
+          </label>
+          <div class="file-row">
+            <input id="csvFile" type="file" accept=".csv,text/csv" />
+            <button type="button" id="clearCsvBtn" class="btn-secondary">Clear custom CSV</button>
+            <div id="csvStatus" class="file-status">No CSV loaded. Max 5000 rows.</div>
+          </div>
+        </div>
+
+        <div class="control">
+          <label for="nPts">
+            <span>Samples</span>
+            <span class="value" id="nPtsVal">200</span>
+          </label>
+          <input id="nPts" type="range" min="50" max="1000" step="10" value="200" />
+        </div>
+
+        <div class="control">
+          <label for="noise">
+            <span>Noise level</span>
+            <span class="value" id="noiseVal">2.0</span>
+          </label>
+          <input id="noise" type="range" min="0" max="20" step="0.1" value="2.0" />
+        </div>
+
+        <div class="control">
+          <label for="sampleRate">
+            <span>Sample rate (Hz)</span>
+            <span class="value" id="sampleRateVal">100</span>
+          </label>
+          <input id="sampleRate" type="range" min="1" max="1000" step="1" value="100" />
+        </div>
+
+        <div class="control">
+          <label for="sineFreq">
+            <span>Sine frequency (Hz)</span>
+            <span class="value" id="sineFreqVal">1.00</span>
+          </label>
+          <input id="sineFreq" type="range" min="0.01" max="20" step="0.01" value="1.0" />
+        </div>
+
+        <div class="control">
+          <label for="seed">
+            <span>Random seed</span>
+            <span class="value" id="seedVal">1</span>
+          </label>
+          <input id="seed" type="range" min="1" max="999" step="1" value="1" />
+        </div>
+
+        <div class="section-title">Rolling average / regression</div>
+
+        <div class="control">
+          <label for="winAvg">
+            <span>Average window</span>
+            <span class="value" id="winAvgVal">15</span>
+          </label>
+          <input id="winAvg" type="range" min="2" max="100" step="1" value="15" />
+        </div>
+
+        <div class="control">
+          <label for="winReg">
+            <span>Regression window</span>
+            <span class="value" id="winRegVal">21</span>
+          </label>
+          <input id="winReg" type="range" min="3" max="100" step="1" value="21" />
+        </div>
+
+        <div class="section-title">α-β / α-β-γ filters</div>
+
+        <div class="control">
+          <label for="alpha">
+            <span>α (position gain)</span>
+            <span class="value" id="alphaVal">0.080</span>
+          </label>
+          <input id="alpha" type="range" min="0" max="1000" step="1" value="634" />
+          <div class="log-hint">log scale · 0.001 – 1.0</div>
+        </div>
+
+        <div class="control">
+          <label for="beta">
+            <span>β (velocity gain)</span>
+            <span class="value" id="betaVal">0.0060</span>
+          </label>
+          <input id="beta" type="range" min="0" max="1000" step="1" value="539" />
+          <div class="log-hint">log scale · 0.0001 – 0.2</div>
+        </div>
+
+        <div class="control">
+          <label for="gamma">
+            <span>γ (accel gain)</span>
+            <span class="value" id="gammaVal">0.00005</span>
+          </label>
+          <input id="gamma" type="range" min="0" max="1000" step="1" value="362" />
+          <div class="log-hint">log scale · 0.000001 – 0.05</div>
+        </div>
+
+        <!-- Live filter mini preview -->
+        <div class="mini-preview">
+          <div class="mini-legend">
+            Signal — <span style="color:#4ade80">truth</span>&nbsp;
+            <span style="color:#6ea8fe">α-β out</span>&nbsp;
+            <span style="color:#14b8a6">α-β-γ out</span>&nbsp;
+            <span style="color:rgba(154,164,178,0.7)">raw</span>
+          </div>
+          <canvas id="miniSignal" class="mini" height="80" aria-label="Mini signal preview chart"></canvas>
+          <div class="mini-legend" style="margin-top:4px">
+            Velocity — <span style="color:#6ea8fe">α-β vel</span>&nbsp;
+            <span style="color:#14b8a6">α-β-γ vel</span>&nbsp;
+            <span style="color:rgba(251, 190, 36, 0.7)">avg grad</span>
+          </div>
+          <canvas id="miniVel" class="mini" height="60" aria-label="Mini velocity preview chart"></canvas>
+        </div>
+
+        <div class="row2">
+          <button id="regenBtn" class="btn-accent" type="button">Regenerate signal</button>
+          <button type="button" class="btn-accent" data-preset="stable_ramp">Stable ramp</button>
+        </div>
+        <div class="row2">
+          <button type="button" id="resetDefaultsBtn" class="btn-secondary">Reset defaults</button>
+          <div></div>
+        </div>
+
+        <div class="section-title">Usage presets</div>
+        <div class="preset-grid">
+          <button type="button" data-preset="step_response">Step response</button>
+          <button type="button" data-preset="periodic_signal">Periodic signal</button>
+          <button type="button" data-preset="curved_trend">Curved trend</button>
+          <button type="button" data-preset="heavy_smoothing">Heavy smoothing</button>
+        </div>
+
+        <div class="section-title">Visible traces</div>
+        <div class="checks">
+          <label class="chk"><input type="checkbox" id="showRaw" checked>Raw</label>
+          <label class="chk"><input type="checkbox" id="showTruth" checked>Ground truth</label>
+          <label class="chk"><input type="checkbox" id="showAvg" checked>Rolling average</label>
+          <label class="chk"><input type="checkbox" id="showReg" checked>Rolling regression</label>
+          <label class="chk"><input type="checkbox" id="showAB" checked>α-β output</label>
+          <label class="chk"><input type="checkbox" id="showABG" checked>α-β-γ output</label>
+          <label class="chk"><input type="checkbox" id="showGradTruth" checked>Truth gradient</label>
+          <label class="chk"><input type="checkbox" id="showGradAvg" checked>Avg gradient</label>
+          <label class="chk"><input type="checkbox" id="showGradReg" checked>Reg slope</label>
+          <label class="chk"><input type="checkbox" id="showGradAB" checked>α-β velocity</label>
+          <label class="chk"><input type="checkbox" id="showGradABG" checked>α-β-γ velocity</label>
+        </div>
+
+        <div class="section-title">Zoom mode</div>
+        <div class="zoom-grid">
+          <button type="button" data-dragmode="pan" class="active">Pan</button>
+          <button type="button" data-dragmode="zoom">XY</button>
+          <button type="button" data-dragmode="zoom-x">X only</button>
+          <button type="button" data-dragmode="zoom-y">Y only</button>
+        </div>
+        <button type="button" id="resetZoomBtn" class="btn-secondary" style="margin-top:4px;width:100%">Reset zoom</button>
+
+        <div class="section-title">Algorithm quick guide</div>
+        <div class="algo-list">
+          <div class="algo-item"><b>Ground truth:</b> ideal reference signal before measurement noise.</div>
+          <div class="algo-item"><b>Raw:</b> noisy measurements with no smoothing or model assumptions.</div>
+          <div class="algo-item"><b>Rolling average:</b> moving mean over a window; simple smoothing but adds lag.</div>
+          <div class="algo-item"><b>Rolling regression:</b> local line fit in a window; output is fitted value and slope.</div>
+          <div class="algo-item"><b>α-β filter:</b> constant-velocity tracker; α corrects position, β corrects velocity.</div>
+          <div class="algo-item"><b>α-β-γ filter:</b> constant-acceleration tracker; adds γ to adapt acceleration changes.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="plot-metrics-layout">
+      <div class="card">
+        <div id="plotCombined" class="plot" role="img" aria-label="Combined signal and gradient comparison plots"></div>
+        <div class="footer-note">Regression slope is estimated directly from a local linear fit. Average gradient is derived from the smoothed output, so it often lags more.</div>
+      </div>
+      <aside class="card metrics-panel" aria-label="Quick metrics">
+        <div class="section-title">Quick metrics</div>
+        <div class="metrics">
+          <div class="metric">
+            <div class="k">Grad std — Avg</div>
+            <div class="v" id="mAvgStd">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Grad std — Reg</div>
+            <div class="v" id="mRegStd">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Grad std — α-β</div>
+            <div class="v" id="mABStd">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Grad std — α-β-γ</div>
+            <div class="v" id="mABGStd">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Stability — α-β</div>
+            <div class="v" id="mABStability">–</div>
+            <div class="metric-sub" id="mABStabilitySub">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Stability — α-β-γ</div>
+            <div class="v" id="mABGStability">–</div>
+            <div class="metric-sub" id="mABGStabilitySub">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Time shift (abs) — Raw</div>
+            <div class="v" id="mRawLag">–</div>
+            <div class="metric-sub" id="mRawLagSub">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Time shift (abs) — Avg</div>
+            <div class="v" id="mAvgLag">–</div>
+            <div class="metric-sub" id="mAvgLagSub">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Time shift (abs) — Reg</div>
+            <div class="v" id="mRegLag">–</div>
+            <div class="metric-sub" id="mRegLagSub">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Time shift (abs) — α-β</div>
+            <div class="v" id="mABLag">–</div>
+            <div class="metric-sub" id="mABLagSub">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Time shift (abs) — α-β-γ</div>
+            <div class="v" id="mABGLag">–</div>
+            <div class="metric-sub" id="mABGLagSub">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Best smoothest</div>
+            <div class="v" id="mBest">–</div>
+          </div>
+          <div class="metric">
+            <div class="k">Best lowest lag</div>
+            <div class="v" id="mBestLag">–</div>
+          </div>
+        </div>
+        <div class="hint">
+          Lower gradient std means smoother derivative. For a very stable gradient, α should usually be modest, β much smaller than α, and γ smaller again. Stability check uses the normalized closed-loop error dynamics: spectral radius below 1 means asymptotically stable.
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const els = {
+    signalType: document.getElementById('signalType'),
+    nPts: document.getElementById('nPts'),
+    noise: document.getElementById('noise'),
+    sampleRate: document.getElementById('sampleRate'),
+    sineFreq: document.getElementById('sineFreq'),
+    seed: document.getElementById('seed'),
+    winAvg: document.getElementById('winAvg'),
+    winReg: document.getElementById('winReg'),
+    alpha: document.getElementById('alpha'),
+    beta: document.getElementById('beta'),
+    gamma: document.getElementById('gamma'),
+
+    nPtsVal: document.getElementById('nPtsVal'),
+    noiseVal: document.getElementById('noiseVal'),
+    sampleRateVal: document.getElementById('sampleRateVal'),
+    sineFreqVal: document.getElementById('sineFreqVal'),
+    seedVal: document.getElementById('seedVal'),
+    winAvgVal: document.getElementById('winAvgVal'),
+    winRegVal: document.getElementById('winRegVal'),
+    alphaVal: document.getElementById('alphaVal'),
+    betaVal: document.getElementById('betaVal'),
+    gammaVal: document.getElementById('gammaVal'),
+
+    regenBtn: document.getElementById('regenBtn'),
+    resetDefaultsBtn: document.getElementById('resetDefaultsBtn'),
+    csvFile: document.getElementById('csvFile'),
+    clearCsvBtn: document.getElementById('clearCsvBtn'),
+    csvStatus: document.getElementById('csvStatus'),
+
+    showRaw: document.getElementById('showRaw'),
+    showTruth: document.getElementById('showTruth'),
+    showAvg: document.getElementById('showAvg'),
+    showReg: document.getElementById('showReg'),
+    showAB: document.getElementById('showAB'),
+    showABG: document.getElementById('showABG'),
+    showGradTruth: document.getElementById('showGradTruth'),
+    showGradAvg: document.getElementById('showGradAvg'),
+    showGradReg: document.getElementById('showGradReg'),
+    showGradAB: document.getElementById('showGradAB'),
+    showGradABG: document.getElementById('showGradABG'),
+
+    mAvgStd: document.getElementById('mAvgStd'),
+    mRegStd: document.getElementById('mRegStd'),
+    mABStd: document.getElementById('mABStd'),
+    mABGStd: document.getElementById('mABGStd'),
+    mABStability: document.getElementById('mABStability'),
+    mABStabilitySub: document.getElementById('mABStabilitySub'),
+    mABGStability: document.getElementById('mABGStability'),
+    mABGStabilitySub: document.getElementById('mABGStabilitySub'),
+    mRawLag: document.getElementById('mRawLag'),
+    mRawLagSub: document.getElementById('mRawLagSub'),
+    mAvgLag: document.getElementById('mAvgLag'),
+    mAvgLagSub: document.getElementById('mAvgLagSub'),
+    mRegLag: document.getElementById('mRegLag'),
+    mRegLagSub: document.getElementById('mRegLagSub'),
+    mABLag: document.getElementById('mABLag'),
+    mABLagSub: document.getElementById('mABLagSub'),
+    mABGLag: document.getElementById('mABGLag'),
+    mABGLagSub: document.getElementById('mABGLagSub'),
+    mBest: document.getElementById('mBest'),
+    mBestLag: document.getElementById('mBestLag'),
+
+    miniSignal: document.getElementById('miniSignal'),
+    miniVel: document.getElementById('miniVel')
+  };
+
+  let regenNonce = 0;
+  let pendingRaf = 0;
+  const defaultState = {};
+  const presetButtons = Array.from(document.querySelectorAll('[data-preset]'));
+  let customCsvData = null;
+  let currentDragMode = 'pan';
+
+  // Logarithmic mapping for alpha slider (0–1000 → 0.001–1.0)
+  const ALPHA_MIN = 0.001, ALPHA_MAX = 1.0, ALPHA_SLIDER_MAX = 1000;
+  const LOG_ALPHA_MIN = Math.log(ALPHA_MIN), LOG_ALPHA_MAX = Math.log(ALPHA_MAX);
+  function alphaFromSlider(v){ return Math.exp(LOG_ALPHA_MIN + (v / ALPHA_SLIDER_MAX) * (LOG_ALPHA_MAX - LOG_ALPHA_MIN)); }
+  function sliderFromAlpha(a){ return Math.round(((Math.log(a) - LOG_ALPHA_MIN) / (LOG_ALPHA_MAX - LOG_ALPHA_MIN)) * ALPHA_SLIDER_MAX); }
+
+  // Logarithmic mapping for beta slider (0–1000 → 0.0001–0.2)
+  const BETA_MIN = 0.0001, BETA_MAX = 0.2, BETA_SLIDER_MAX = 1000;
+  const LOG_BETA_MIN = Math.log(BETA_MIN), LOG_BETA_MAX = Math.log(BETA_MAX);
+  function betaFromSlider(v){ return Math.exp(LOG_BETA_MIN + (v / BETA_SLIDER_MAX) * (LOG_BETA_MAX - LOG_BETA_MIN)); }
+  function sliderFromBeta(b){ return Math.round(((Math.log(b) - LOG_BETA_MIN) / (LOG_BETA_MAX - LOG_BETA_MIN)) * BETA_SLIDER_MAX); }
+
+  // Logarithmic mapping for gamma slider (0–1000 → 0.000001–0.05)
+  const GAMMA_MIN = 0.000001, GAMMA_MAX = 0.05, GAMMA_SLIDER_MAX = 1000;
+  const LOG_GAMMA_MIN = Math.log(GAMMA_MIN), LOG_GAMMA_MAX = Math.log(GAMMA_MAX);
+  function gammaFromSlider(v){ return Math.exp(LOG_GAMMA_MIN + (v / GAMMA_SLIDER_MAX) * (LOG_GAMMA_MAX - LOG_GAMMA_MIN)); }
+  function sliderFromGamma(g){ return Math.round(((Math.log(g) - LOG_GAMMA_MIN) / (LOG_GAMMA_MAX - LOG_GAMMA_MIN)) * GAMMA_SLIDER_MAX); }
+
+  function fmt(x, digits=3){
+    return Number.isFinite(x) ? x.toFixed(digits) : '–';
+  }
+
+  function fmtGain(x){
+    if(!Number.isFinite(x)) return '–';
+    if(x >= 0.1) return x.toFixed(3);
+    if(x >= 0.01) return x.toFixed(3);
+    if(x >= 0.001) return x.toFixed(4);
+    if(x >= 0.0001) return x.toFixed(5);
+    return x.toExponential(1);
+  }
+
+  function rngFactory(seed){
+    let s = seed >>> 0;
+    return function(){
+      s = (1664525 * s + 1013904223) >>> 0;
+      return s / 4294967296;
+    };
+  }
+
+  function randn(rng){
+    let u = 0, v = 0;
+    while(u === 0) u = rng();
+    while(v === 0) v = rng();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  function setCsvStatus(message, tone=''){
+    els.csvStatus.textContent = message;
+    els.csvStatus.classList.remove('ok', 'err');
+    if(tone) els.csvStatus.classList.add(tone);
+  }
+
+  function parseCustomCsvText(text){
+    const lines = text.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    if(!lines.length) throw new Error('CSV is empty.');
+
+    const sample = lines[0];
+    const delimCandidates = [',', ';', '\t'];
+    let delim = ',';
+    let bestCount = -1;
+    for(const d of delimCandidates){
+      const c = sample.split(d).length;
+      if(c > bestCount){ bestCount = c; delim = d; }
+    }
+
+    const rows = [];
+    for(const line of lines){
+      const parts = line.split(delim).map(s => s.trim());
+      if(parts.length < 2) continue;
+      const t = Number(parts[0]);
+      const y = Number(parts[1]);
+      if(!Number.isFinite(t) || !Number.isFinite(y)) continue; // skip header/invalid rows
+      rows.push({t, y});
+    }
+
+    if(rows.length < 2) throw new Error('Need at least 2 numeric rows (time,signal).');
+    if(rows.length > 5000) throw new Error('CSV exceeds 5000 numeric rows.');
+    for(let i=1;i<rows.length;i++){
+      if(!(rows[i].t > rows[i-1].t)){
+        throw new Error('Time column must be strictly increasing.');
+      }
+    }
+
+    const t0 = rows[0].t;
+    const x = rows.map(r => r.t - t0);
+    const truth = rows.map(r => r.y);
+    const deltas = [];
+    for(let i=1;i<x.length;i++) deltas.push(x[i] - x[i-1]);
+    deltas.sort((a,b) => a - b);
+    const dt = deltas[Math.floor(deltas.length / 2)] || 1;
+    const sampleRate = dt > 0 ? (1 / dt) : 1;
+
+    return {x, truth, dt, sampleRate};
+  }
+
+  function generateSignal(type, n, noise, seed, sampleRate, sineFreq){
+    if(type === 'custom_csv' && customCsvData){
+      const x = customCsvData.x.slice();
+      const truth = customCsvData.truth.slice();
+      const truthGrad = gradientFromSignalWithTime(truth, x);
+      const raw = truth.slice();
+      return {x, dt: customCsvData.dt, raw, truth, truthGrad};
+    }
+
+    const rng = rngFactory((seed + regenNonce * 1009) >>> 0);
+    const dt = 1 / sampleRate;
+    const x = Array.from({length:n}, (_,i)=>i * dt);
+    const truth = new Array(n);
+    const truthGrad = new Array(n);
+    const omega = 2 * Math.PI * sineFreq;
+
+    for(let i=0;i<n;i++){
+      const t = i * dt;
+      const tTotal = (n - 1) * dt;
+      if(type === 'constant'){
+        truth[i] = 20;
+        truthGrad[i] = 0;
+      }else if(type === 'ramp'){
+        truth[i] = 5 + 0.18 * t * sampleRate;
+        truthGrad[i] = 0.18 * sampleRate;
+      }else if(type === 'step'){
+        truth[i] = t < tTotal*0.45 ? 12 : 32;
+        truthGrad[i] = 0;
+      }else if(type === 'sine'){
+        truth[i] = 20 + 8 * Math.sin(omega * t);
+        truthGrad[i] = 8 * omega * Math.cos(omega * t);
+      }else if(type === 'piecewise'){
+        if(t < tTotal*0.25){
+          truth[i] = 8 + 0.06*i;
+          truthGrad[i] = 0.06 * sampleRate;
+        }else if(t < tTotal*0.55){
+          truth[i] = 8 + 0.06*(n*0.25) + 0.22*(i - n*0.25);
+          truthGrad[i] = 0.22 * sampleRate;
+        }else if(t < tTotal*0.78){
+          truth[i] = 8 + 0.06*(n*0.25) + 0.22*(n*0.30) - 0.10*(i - n*0.55);
+          truthGrad[i] = -0.10 * sampleRate;
+        }else{
+          truth[i] = 8 + 0.06*(n*0.25) + 0.22*(n*0.30) - 0.10*(n*0.23) + 0.03*(i - n*0.78);
+          truthGrad[i] = 0.03 * sampleRate;
+        }
+      }else{
+        truth[i] = 6 + 0.12*i + 2.2*Math.sin(omega * t);
+        truthGrad[i] = 0.12 * sampleRate + 2.2*omega*Math.cos(omega * t);
+      }
+    }
+
+    const raw = truth.map(v => v + noise * randn(rng));
+    return {x, dt, raw, truth, truthGrad};
+  }
+
+  function rollingAverage(arr, w){
+    const n = arr.length;
+    const out = new Array(n).fill(NaN);
+    let sum = 0;
+    for(let i=0;i<n;i++){
+      sum += arr[i];
+      if(i >= w) sum -= arr[i-w];
+      const count = Math.min(i+1, w);
+      out[i] = sum / count;
+    }
+    return out;
+  }
+
+  function gradientFromSignal(arr){
+    const n = arr.length;
+    const g = new Array(n).fill(NaN);
+    if(n === 0) return g;
+    if(n === 1){ g[0] = 0; return g; }
+    g[0] = arr[1] - arr[0];
+    for(let i=1;i<n-1;i++){
+      g[i] = (arr[i+1] - arr[i-1]) / 2;
+    }
+    g[n-1] = arr[n-1] - arr[n-2];
+    return g;
+  }
+
+  function gradientFromSignalWithTime(arr, x){
+    const n = arr.length;
+    const g = new Array(n).fill(NaN);
+    if(n === 0) return g;
+    if(n === 1){ g[0] = 0; return g; }
+
+    const dx0 = x[1] - x[0];
+    g[0] = Math.abs(dx0) > 1e-12 ? (arr[1] - arr[0]) / dx0 : 0;
+    for(let i=1;i<n-1;i++){
+      const dx = x[i+1] - x[i-1];
+      g[i] = Math.abs(dx) > 1e-12 ? (arr[i+1] - arr[i-1]) / dx : 0;
+    }
+    const dxn = x[n-1] - x[n-2];
+    g[n-1] = Math.abs(dxn) > 1e-12 ? (arr[n-1] - arr[n-2]) / dxn : 0;
+    return g;
+  }
+
+  function rollingRegression(arr, w, xArr=null){
+    const n = arr.length;
+    const yhat = new Array(n).fill(NaN);
+    const slope = new Array(n).fill(NaN);
+
+    for(let i=0;i<n;i++){
+      const start = Math.max(0, i - w + 1);
+      const m = i - start + 1;
+      let sumT = 0, sumT2 = 0, sumY = 0, sumTY = 0;
+
+      for(let k=0;k<m;k++){
+        const t = xArr ? (xArr[start + k] - xArr[start]) : k;
+        const y = arr[start + k];
+        sumT += t;
+        sumT2 += t * t;
+        sumY += y;
+        sumTY += t * y;
+      }
+
+      const denom = m*sumT2 - sumT*sumT;
+
+      let a = 0;
+      let b = sumY / m;
+
+      if(Math.abs(denom) > 1e-12){
+        a = (m*sumTY - sumT*sumY) / denom;
+        b = (sumY - a*sumT) / m;
+      }
+
+      const tEnd = xArr ? (xArr[i] - xArr[start]) : (m - 1);
+      yhat[i] = a * tEnd + b;
+      slope[i] = a;
+    }
+    return {yhat, slope};
+  }
+
+  function alphaBetaFilter(arr, alpha, beta, dt=1, xArr=null){
+    const n = arr.length;
+    const pos = new Array(n).fill(NaN);
+    const vel = new Array(n).fill(NaN);
+
+    if(n === 0) return {pos, vel};
+
+    let x = arr[0];
+    let v = 0;
+    pos[0] = x;
+    vel[0] = v;
+
+    for(let i=1;i<n;i++){
+      const step = xArr ? (xArr[i] - xArr[i-1]) : dt;
+      const xPred = x + v*step;
+      const r = arr[i] - xPred;
+      x = xPred + alpha * r;
+      v = v + beta * r / step;
+      pos[i] = x;
+      vel[i] = v;
+    }
+    return {pos, vel};
+  }
+
+  function alphaBetaGammaFilter(arr, alpha, beta, gamma, dt=1, xArr=null){
+    const n = arr.length;
+    const pos = new Array(n).fill(NaN);
+    const vel = new Array(n).fill(NaN);
+    const acc = new Array(n).fill(NaN);
+
+    if(n === 0) return {pos, vel, acc};
+
+    let x = arr[0];
+    let v = 0;
+    let a = 0;
+    pos[0] = x;
+    vel[0] = v;
+    acc[0] = a;
+
+    for(let i=1;i<n;i++){
+      const step = xArr ? (xArr[i] - xArr[i-1]) : dt;
+      const xPred = x + v*step + 0.5*a*step*step;
+      const vPred = v + a*step;
+      const r = arr[i] - xPred;
+      x = xPred + alpha * r;
+      v = vPred + beta * r / step;
+      a = a + 2 * gamma * r / (step * step);
+      pos[i] = x;
+      vel[i] = v;
+      acc[i] = a;
+    }
+    return {pos, vel, acc};
+  }
+
+  function std(arr){
+    const vals = arr.filter(v => Number.isFinite(v));
+    if(vals.length < 2) return NaN;
+    const mu = vals.reduce((a,b)=>a+b,0) / vals.length;
+    const varr = vals.reduce((a,b)=>a+(b-mu)*(b-mu),0) / vals.length;
+    return Math.sqrt(varr);
+  }
+
+  // Best alignment by time shift: find the lag (in samples) that minimizes
+  // MSE between an output signal and the ground-truth.
+  // lagSamples > 0 means the output is delayed (truth matches later output samples).
+  function bestLagAlignment(truth, output, maxLagSamples, dt){
+    const n = Math.min(truth.length, output.length);
+    if(n < 2 || !Number.isFinite(maxLagSamples) || maxLagSamples < 0){
+      return {lagSamples:0, lagSec:0, alignedMse:NaN, alignedRmse:NaN};
+    }
+
+    const cap = Math.min(maxLagSamples, n - 1);
+    let bestLag = 0;
+    let bestMse = Infinity;
+    let bestCount = 0;
+
+    for(let k = -cap; k <= cap; k++){
+      // Compare truth[i] with output[i + k] (output shifted by k).
+      const iStart = Math.max(0, -k);
+      const iEnd = Math.min(n, n - k);
+
+      let sse = 0;
+      let count = 0;
+      for(let i = iStart; i < iEnd; i++){
+        const a = truth[i];
+        const b = output[i + k];
+        if(!Number.isFinite(a) || !Number.isFinite(b)) continue;
+        const d = a - b;
+        sse += d * d;
+        count++;
+      }
+
+      if(count < 2) continue;
+      const mse = sse / count;
+      if(mse < bestMse){
+        bestMse = mse;
+        bestLag = k;
+        bestCount = count;
+      }
+    }
+
+    if(!Number.isFinite(bestMse) || bestCount < 2){
+      return {lagSamples:0, lagSec:0, alignedMse:NaN, alignedRmse:NaN};
+    }
+
+    const alignedRmse = Math.sqrt(bestMse);
+    return {lagSamples: bestLag, lagSec: bestLag * dt, alignedMse: bestMse, alignedRmse};
+  }
+
+  function renderLagMetric(elValue, elSub, lagResult){
+    if(Number.isFinite(lagResult.lagSec)){
+      elValue.textContent = `${Math.abs(lagResult.lagSec * 1000).toFixed(1)} ms`;
+      const sign = lagResult.lagSamples >= 0 ? '+' : '';
+      const direction = lagResult.lagSamples > 0 ? 'delayed' : (lagResult.lagSamples < 0 ? 'advanced' : 'aligned');
+      elSub.textContent = `lag=${sign}${lagResult.lagSamples} samples (${direction}) · aligned RMSE=${lagResult.alignedRmse.toFixed(2)}`;
+    }else{
+      elValue.textContent = '–';
+      elSub.textContent = '–';
+    }
+  }
+
+  function matMul(a, b){
+    const rows = a.length;
+    const cols = b[0].length;
+    const inner = b.length;
+    const out = Array.from({length:rows}, () => new Array(cols).fill(0));
+    for(let i=0;i<rows;i++){
+      for(let k=0;k<inner;k++){
+        const aik = a[i][k];
+        for(let j=0;j<cols;j++){
+          out[i][j] += aik * b[k][j];
+        }
+      }
+    }
+    return out;
+  }
+
+  function matTrace(a){
+    let trace = 0;
+    for(let i=0;i<a.length;i++) trace += a[i][i];
+    return trace;
+  }
+
+  function matDet(a){
+    if(a.length === 2){
+      return a[0][0] * a[1][1] - a[0][1] * a[1][0];
+    }
+    if(a.length === 3){
+      return (
+        a[0][0] * (a[1][1] * a[2][2] - a[1][2] * a[2][1]) -
+        a[0][1] * (a[1][0] * a[2][2] - a[1][2] * a[2][0]) +
+        a[0][2] * (a[1][0] * a[2][1] - a[1][1] * a[2][0])
+      );
+    }
+    return NaN;
+  }
+
+  function complex(re, im=0){
+    return {re, im};
+  }
+
+  function cAdd(a, b){
+    return {re:a.re + b.re, im:a.im + b.im};
+  }
+
+  function cSub(a, b){
+    return {re:a.re - b.re, im:a.im - b.im};
+  }
+
+  function cMul(a, b){
+    return {
+      re:a.re * b.re - a.im * b.im,
+      im:a.re * b.im + a.im * b.re
+    };
+  }
+
+  function cDiv(a, b){
+    const denom = b.re * b.re + b.im * b.im;
+    if(denom < 1e-18) return complex(Infinity, Infinity);
+    return {
+      re:(a.re * b.re + a.im * b.im) / denom,
+      im:(a.im * b.re - a.re * b.im) / denom
+    };
+  }
+
+  function cAbs(a){
+    return Math.hypot(a.re, a.im);
+  }
+
+  function polyEval(coeffs, z){
+    let acc = complex(coeffs[0], 0);
+    for(let i=1;i<coeffs.length;i++){
+      acc = cAdd(cMul(acc, z), complex(coeffs[i], 0));
+    }
+    return acc;
+  }
+
+  function polyRootsDurandKerner(coeffs, maxIter=80){
+    const degree = coeffs.length - 1;
+    const radius = Math.max(
+      1,
+      1 + Math.max(...coeffs.slice(1).map(v => Math.abs(v / coeffs[0])))
+    );
+    let roots = Array.from({length:degree}, (_,k) => {
+      const theta = (2 * Math.PI * k) / degree;
+      return complex(radius * Math.cos(theta), radius * Math.sin(theta));
+    });
+
+    for(let iter=0; iter<maxIter; iter++){
+      const nextRoots = [];
+      let maxDelta = 0;
+
+      for(let i=0;i<degree;i++){
+        let denom = complex(1, 0);
+        for(let j=0;j<degree;j++){
+          if(i === j) continue;
+          denom = cMul(denom, cSub(roots[i], roots[j]));
+        }
+        if(cAbs(denom) < 1e-12) denom = complex(1e-12, 1e-12);
+        const delta = cDiv(polyEval(coeffs, roots[i]), denom);
+        const next = cSub(roots[i], delta);
+        maxDelta = Math.max(maxDelta, cAbs(delta));
+        nextRoots.push(next);
+      }
+
+      roots = nextRoots;
+      if(maxDelta < 1e-12) break;
+    }
+
+    return roots;
+  }
+
+  function spectralRadius(matrix){
+    if(!matrix.length) return NaN;
+    if(matrix.length === 2){
+      const trace = matTrace(matrix);
+      const det = matDet(matrix);
+      const disc = trace * trace - 4 * det;
+      if(disc >= 0){
+        const root = Math.sqrt(disc);
+        return Math.max(
+          Math.abs((trace + root) / 2),
+          Math.abs((trace - root) / 2)
+        );
+      }
+      return Math.sqrt(Math.abs(det));
+    }
+    if(matrix.length === 3){
+      const trace = matTrace(matrix);
+      const traceM2 = matTrace(matMul(matrix, matrix));
+      const c2 = 0.5 * (trace * trace - traceM2);
+      const det = matDet(matrix);
+      const roots = polyRootsDurandKerner([1, -trace, c2, -det]);
+      return Math.max(...roots.map(cAbs));
+    }
+    return NaN;
+  }
+
+  function alphaBetaStabilityMatrix(alpha, beta){
+    return [
+      [1 - alpha - beta, 1],
+      [-beta, 1]
+    ];
+  }
+
+  function alphaBetaGammaStabilityMatrix(alpha, beta, gamma){
+    return [
+      [1 - alpha - beta - gamma, 1, 1],
+      [-beta - 2*gamma, 1, 2],
+      [-gamma, 0, 1]
+    ];
+  }
+
+  function describeStability(radius){
+    if(!Number.isFinite(radius)){
+      return {label:'Unstable', tone:'unstable', detail:'rho overflow'};
+    }
+    if(radius < 0.999){
+      return {label:'Stable', tone:'stable', detail:`rho ≈ ${radius.toFixed(3)}`};
+    }
+    if(radius <= 1.001){
+      return {label:'Borderline', tone:'marginal', detail:`rho ≈ ${radius.toFixed(3)}`};
+    }
+    return {label:'Unstable', tone:'unstable', detail:`rho ≈ ${radius.toFixed(3)}`};
+  }
+
+  function renderStability(el, elSub, summary){
+    el.innerHTML = `<span class="stability-pill ${summary.tone}">${summary.label}</span>`;
+    elSub.textContent = summary.detail;
+  }
+
+  // ── Mini canvas preview ──────────────────────────────────────────────────
+  function drawMini(canvas, series, H){
+    const W = canvas.parentElement.clientWidth - 20; // account for padding
+    canvas.width = Math.max(W, 100);
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, H);
+
+    const n = series[0].data.length;
+    if(n < 2) return;
+
+    // Subsample for performance
+    const step = Math.max(1, Math.floor(n / 400));
+    const idx = [];
+    for(let i = 0; i < n; i += step) idx.push(i);
+
+    // Compute global min/max across all series
+    let lo = Infinity, hi = -Infinity;
+    for(const s of series){
+      for(const i of idx){
+        const v = s.data[i];
+        if(Number.isFinite(v)){ if(v < lo) lo = v; if(v > hi) hi = v; }
+      }
+    }
+    if(!Number.isFinite(lo)) return;
+    const range = hi - lo || 1;
+    const pad = 4;
+    const toX = i => (i / (n - 1)) * canvas.width;
+    const toY = v => H - pad - ((v - lo) / range) * (H - pad * 2);
+
+    // Zero line (for velocity)
+    if(lo < 0 && hi > 0){
+      const zy = toY(0);
+      ctx.beginPath();
+      ctx.strokeStyle = '#263040';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.moveTo(0, zy);
+      ctx.lineTo(canvas.width, zy);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    for(const s of series){
+      ctx.beginPath();
+      ctx.strokeStyle = s.color;
+      ctx.lineWidth = s.width || 1.5;
+      ctx.globalAlpha = s.alpha || 1;
+      let first = true;
+      for(const i of idx){
+        const v = s.data[i];
+        if(!Number.isFinite(v)){ first = true; continue; }
+        const px = toX(i), py = toY(v);
+        first ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        first = false;
+      }
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawMiniPlots(raw, truth, abY, abV, abgY, abgV, gradAvg){
+    drawMini(els.miniSignal, [
+      {data: raw,   color:'rgba(154,164,178,0.5)', width:1,   alpha:1},
+      {data: truth, color:'#4ade80',               width:1.5, alpha:1},
+      {data: abY,   color:'#6ea8fe',               width:2,   alpha:1},
+      {data: abgY,  color:'#14b8a6',               width:2,   alpha:1}
+    ], 80);
+
+    drawMini(els.miniVel, [
+      {data: gradAvg, color:'rgba(251,191,36,0.6)', width:1.5, alpha:1},
+      {data: abV,     color:'#6ea8fe',              width:2,   alpha:1},
+      {data: abgV,    color:'#14b8a6',              width:2,   alpha:1}
+    ], 60);
+  }
+  // ────────────────────────────────────────────────────────────────────────
+
+  function updateLabels(){
+    if(els.signalType.value === 'custom_csv' && customCsvData){
+      els.nPtsVal.textContent = customCsvData.truth.length;
+      els.sampleRateVal.textContent = customCsvData.sampleRate.toFixed(2);
+    }else{
+      els.nPtsVal.textContent = els.nPts.value;
+      els.sampleRateVal.textContent = els.sampleRate.value;
+    }
+    els.noiseVal.textContent = Number(els.noise.value).toFixed(1);
+    els.sineFreqVal.textContent = Number(els.sineFreq.value).toFixed(2);
+    els.seedVal.textContent = els.seed.value;
+    els.winAvgVal.textContent = els.winAvg.value;
+    els.winRegVal.textContent = els.winReg.value;
+    els.alphaVal.textContent = fmtGain(alphaFromSlider(Number(els.alpha.value)));
+    els.betaVal.textContent = fmtGain(betaFromSlider(Number(els.beta.value)));
+    els.gammaVal.textContent = fmtGain(gammaFromSlider(Number(els.gamma.value)));
+  }
+
+  function plotAll(){
+    updateLabels();
+
+    const signalType = els.signalType.value;
+    let n = Number(els.nPts.value);
+    const noise = Number(els.noise.value);
+    let sampleRate = Number(els.sampleRate.value);
+    const sineFreq = Number(els.sineFreq.value);
+    const seed = Number(els.seed.value);
+    const wAvg = Number(els.winAvg.value);
+    const wReg = Number(els.winReg.value);
+    const alpha = alphaFromSlider(Number(els.alpha.value));
+    const beta = betaFromSlider(Number(els.beta.value));
+    const gamma = gammaFromSlider(Number(els.gamma.value));
+
+    if(signalType === 'custom_csv' && customCsvData){
+      n = customCsvData.truth.length;
+      sampleRate = customCsvData.sampleRate;
+    }
+
+    const {x, dt, raw, truth, truthGrad} = generateSignal(signalType, n, noise, seed, sampleRate, sineFreq);
+    const nonUniform = signalType === 'custom_csv';
+
+    const avg = rollingAverage(raw, wAvg);
+    const gradAvg = nonUniform ? gradientFromSignalWithTime(avg, x) : gradientFromSignal(avg).map(v => v / dt);
+
+    const reg = rollingRegression(raw, wReg, nonUniform ? x : null);
+    const regY = reg.yhat;
+    const regSlope = nonUniform ? reg.slope : reg.slope.map(v => v / dt);
+
+    const ab = alphaBetaFilter(raw, alpha, beta, dt, nonUniform ? x : null);
+    const abY = ab.pos;
+    const abV = ab.vel;
+
+    const abg = alphaBetaGammaFilter(raw, alpha, beta, gamma, dt, nonUniform ? x : null);
+    const abgY = abg.pos;
+    const abgV = abg.vel;
+
+    const avgStd = std(gradAvg);
+    const regStd = std(regSlope);
+    const abStd = std(abV);
+    const abgStd = std(abgV);
+    const abStability = describeStability(spectralRadius(alphaBetaStabilityMatrix(alpha, beta)));
+    const abgStability = describeStability(spectralRadius(alphaBetaGammaStabilityMatrix(alpha, beta, gamma)));
+
+    els.mAvgStd.textContent = fmt(avgStd);
+    els.mRegStd.textContent = fmt(regStd);
+    els.mABStd.textContent = fmt(abStd);
+    els.mABGStd.textContent = fmt(abgStd);
+    renderStability(els.mABStability, els.mABStabilitySub, abStability);
+    renderStability(els.mABGStability, els.mABGStabilitySub, abgStability);
+
+    const maxLagSamples = Math.min(Math.floor(sampleRate * 0.25), 80, n - 1);
+    const rawLag = bestLagAlignment(truth, raw, maxLagSamples, dt);
+    const avgLag = bestLagAlignment(truth, avg, maxLagSamples, dt);
+    const regLag = bestLagAlignment(truth, regY, maxLagSamples, dt);
+    const abLag = bestLagAlignment(truth, abY, maxLagSamples, dt);
+    const abgLag = bestLagAlignment(truth, abgY, maxLagSamples, dt);
+
+    renderLagMetric(els.mRawLag, els.mRawLagSub, rawLag);
+    renderLagMetric(els.mAvgLag, els.mAvgLagSub, avgLag);
+    renderLagMetric(els.mRegLag, els.mRegLagSub, regLag);
+    renderLagMetric(els.mABLag, els.mABLagSub, abLag);
+    renderLagMetric(els.mABGLag, els.mABGLagSub, abgLag);
+
+    const lagRanked = [
+      {name:'Raw', lag:rawLag},
+      {name:'Avg', lag:avgLag},
+      {name:'Reg', lag:regLag},
+      {name:'α-β', lag:abLag},
+      {name:'α-β-γ', lag:abgLag}
+    ]
+      .filter(o => Number.isFinite(o.lag.lagSec))
+      .sort((a,b) => Math.abs(a.lag.lagSec) - Math.abs(b.lag.lagSec));
+    els.mBestLag.textContent = lagRanked.length ? lagRanked[0].name : '–';
+
+    const ranked = [
+      {name:'Avg', v:avgStd},
+      {name:'Reg', v:regStd},
+      {name:'α-β', v:abStd},
+      {name:'α-β-γ', v:abgStd}
+    ].filter(o => Number.isFinite(o.v)).sort((a,b)=>a.v-b.v);
+    els.mBest.textContent = ranked.length ? ranked[0].name : '–';
+
+    // Update mini previews
+    drawMiniPlots(raw, truth, abY, abV, abgY, abgV, gradAvg);
+
+    const signalTraces = [];
+    if(els.showTruth.checked){
+      signalTraces.push({
+        x, y: truth, type:'scatter', mode:'lines',
+        name:'Ground truth',
+        line:{width:3, dash:'solid', color:'#4ade80'}
+      });
+    }
+    if(els.showRaw.checked){
+      signalTraces.push({
+        x, y: raw, type:'scatter', mode:'lines',
+        name:'Raw',
+        line:{width:1.5, color:'#9aa4b2'}
+      });
+    }
+    if(els.showAvg.checked){
+      signalTraces.push({
+        x, y: avg, type:'scatter', mode:'lines',
+        name:'Rolling average',
+        line:{width:3, color:'#fbbf24'}
+      });
+    }
+    if(els.showReg.checked){
+      signalTraces.push({
+        x, y: regY, type:'scatter', mode:'lines',
+        name:'Rolling regression',
+        line:{width:3, color:'#f87171'}
+      });
+    }
+    if(els.showAB.checked){
+      signalTraces.push({
+        x, y: abY, type:'scatter', mode:'lines',
+        name:'α-β output',
+        line:{width:3, color:'#6ea8fe'}
+      });
+    }
+    if(els.showABG.checked){
+      signalTraces.push({
+        x, y: abgY, type:'scatter', mode:'lines',
+        name:'α-β-γ output',
+        line:{width:3, color:'#14b8a6'}
+      });
+    }
+
+    const gradTraces = [];
+    if(els.showGradTruth.checked){
+      gradTraces.push({
+        x, y: truthGrad, type:'scatter', mode:'lines',
+        name:'Truth gradient',
+        line:{width:3, color:'#4ade80'}
+      });
+    }
+    if(els.showGradAvg.checked){
+      gradTraces.push({
+        x, y: gradAvg, type:'scatter', mode:'lines',
+        name:'Avg gradient',
+        line:{width:2.5, color:'#fbbf24'}
+      });
+    }
+    if(els.showGradReg.checked){
+      gradTraces.push({
+        x, y: regSlope, type:'scatter', mode:'lines',
+        name:'Reg slope',
+        line:{width:2.5, color:'#f87171'}
+      });
+    }
+    if(els.showGradAB.checked){
+      gradTraces.push({
+        x, y: abV, type:'scatter', mode:'lines',
+        name:'α-β velocity',
+        line:{width:2.5, color:'#6ea8fe'}
+      });
+    }
+    if(els.showGradABG.checked){
+      gradTraces.push({
+        x, y: abgV, type:'scatter', mode:'lines',
+        name:'α-β-γ velocity',
+        line:{width:2.5, color:'#14b8a6'}
+      });
+    }
+
+    const compactLayout = window.innerWidth <= 900;
+    const axisStyle = {
+      gridcolor:'#263040',
+      zerolinecolor:'#263040'
+    };
+    const commonLayout = {
+      paper_bgcolor:'rgba(0,0,0,0)',
+      plot_bgcolor:'#0f141b',
+      font:{color:'#e6edf3', size:13},
+      uirevision:'plot-view',
+      selectionrevision:'plot-view',
+      editrevision:'plot-view',
+      margin: compactLayout
+        ? {l:54,r:18,t:96,b:76}
+        : {l:54,r:150,t:76,b:52},
+      legend: compactLayout
+        ? {
+            orientation:'h',
+            yanchor:'bottom',
+            y:1.12,
+            xanchor:'left',
+            x:0,
+            bgcolor:'rgba(0,0,0,0)',
+            uirevision:'legend-state'
+          }
+        : {
+            orientation:'v',
+            yanchor:'top',
+            y:1,
+            xanchor:'left',
+            x:1.02,
+            bgcolor:'rgba(15,20,27,0.88)',
+            bordercolor:'#263040',
+            borderwidth:1,
+            uirevision:'legend-state'
+          },
+      dragmode:currentDragMode === 'zoom-x' ? 'zoom'
+              : currentDragMode === 'zoom-y' ? 'zoom'
+              : currentDragMode
+    };
+
+    const combinedTraces = [
+      ...signalTraces.map(trace => ({...trace, xaxis:'x', yaxis:'y'})),
+      ...gradTraces.map(trace => ({...trace, xaxis:'x2', yaxis:'y2'}))
+    ];
+
+    const fixX = currentDragMode === 'zoom-y';
+    const fixY = currentDragMode === 'zoom-x';
+
+    Plotly.react('plotCombined', combinedTraces, {
+      ...commonLayout,
+      xaxis:{
+        ...axisStyle,
+        domain:[0, 1],
+        anchor:'y',
+        title:'Time (s)',
+        showticklabels:true,
+        fixedrange:fixX,
+        uirevision:'signal-axis'
+      },
+      yaxis:{
+        ...axisStyle,
+        domain:[0.56, 1],
+        title:'Value',
+        fixedrange:fixY,
+        uirevision:'signal-axis'
+      },
+      xaxis2:{
+        ...axisStyle,
+        domain:[0, 1],
+        anchor:'y2',
+        title:'Time (s)',
+        fixedrange:fixX,
+        uirevision:'grad-axis'
+      },
+      yaxis2:{
+        ...axisStyle,
+        domain:[0, 0.4],
+        title:'Gradient (/s)',
+        fixedrange:fixY,
+        uirevision:'grad-axis'
+      },
+      annotations:[
+        {
+          text:'Signal output comparison',
+          x:0,
+          xref:'paper',
+          xanchor:'left',
+          y:1.06,
+          yref:'paper',
+          showarrow:false,
+          font:{size:16, color:'#e6edf3'}
+        },
+        {
+          text:'Gradient / slope comparison',
+          x:0,
+          xref:'paper',
+          xanchor:'left',
+          y:0.46,
+          yref:'paper',
+          showarrow:false,
+          font:{size:16, color:'#e6edf3'}
+        }
+      ],
+      hovermode:'x'
+    }, {
+      responsive:true,
+      displayModeBar:true,
+      displaylogo:false,
+      scrollZoom:true
+    });
+  }
+
+  function schedulePlot(){
+    if(pendingRaf) return;
+    pendingRaf = requestAnimationFrame(() => {
+      pendingRaf = 0;
+      plotAll();
+    });
+  }
+
+  /* ── Touch pan & pinch-zoom for mobile (iPhone etc.) ── */
+  (function initTouchGraph(){
+    const el = document.getElementById('plotCombined');
+    let touches0 = null;   // snapshot at gesture start
+    let axSnap = null;     // axis ranges at gesture start
+    let gestureRaf = 0;
+    let lastTapTime = 0;
+
+    function midpoint(a, b){ return [(a.clientX+b.clientX)/2, (a.clientY+b.clientY)/2]; }
+    function dist(a, b){ return Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY); }
+
+    function getAxes(){
+      const layout = el._fullLayout;
+      if(!layout) return null;
+      const axes = {};
+      for(const key of ['xaxis','yaxis','xaxis2','yaxis2']){
+        const ax = layout[key];
+        if(!ax) continue;
+        axes[key] = {range: ax.range.slice(), _rl: ax._rl ? ax._rl.slice() : ax.range.slice()};
+      }
+      return axes;
+    }
+
+    el.addEventListener('touchstart', function(e){
+      if(e.touches.length < 1) return;
+      touches0 = Array.from(e.touches).map(t => ({clientX:t.clientX, clientY:t.clientY}));
+      axSnap = getAxes();
+    }, {passive: true});
+
+    el.addEventListener('touchmove', function(e){
+      if(!axSnap || !touches0) return;
+      if(e.touches.length < 1) return;
+      e.preventDefault();
+
+      if(gestureRaf) return;
+      gestureRaf = requestAnimationFrame(() => {
+        gestureRaf = 0;
+        const cur = Array.from(e.touches);
+        const layout = el._fullLayout;
+        if(!layout) return;
+
+        const rect = el.getBoundingClientRect();
+        const ml = layout.margin.l;
+        const mt = layout.margin.t;
+        const pw = layout.width - ml - layout.margin.r;
+        const ph = layout.height - mt - layout.margin.b;
+        if(pw <= 0 || ph <= 0) return;
+
+        const update = {};
+
+        if(cur.length === 1 && touches0.length >= 1){
+          // Single-finger pan
+          const dx = cur[0].clientX - touches0[0].clientX;
+          const dy = cur[0].clientY - touches0[0].clientY;
+
+          for(const key of Object.keys(axSnap)){
+            const snap = axSnap[key];
+            const rng = snap.range;
+            const span = rng[1] - rng[0];
+            const isX = key.startsWith('x');
+            const frac = isX ? -dx / pw : dy / ph;
+            update[key+'.range[0]'] = rng[0] + span * frac;
+            update[key+'.range[1]'] = rng[1] + span * frac;
+          }
+        } else if(cur.length >= 2 && touches0.length >= 2){
+          // Pinch zoom + pan
+          const d0 = dist(touches0[0], touches0[1]);
+          const d1 = dist(cur[0], cur[1]);
+          const scale = Math.max(0.1, d1 / Math.max(d0, 1));
+
+          const mid0 = midpoint(touches0[0], touches0[1]);
+          const mid1 = midpoint(cur[0], cur[1]);
+          const panDx = mid1[0] - mid0[0];
+          const panDy = mid1[1] - mid0[1];
+
+          // Separate x and y scale from finger spread
+          const dx0 = Math.abs(touches0[0].clientX - touches0[1].clientX);
+          const dy0 = Math.abs(touches0[0].clientY - touches0[1].clientY);
+          const dx1 = Math.abs(cur[0].clientX - cur[1].clientX);
+          const dy1 = Math.abs(cur[0].clientY - cur[1].clientY);
+          const scaleX = Math.max(0.1, dx1 / Math.max(dx0, 10));
+          const scaleY = Math.max(0.1, dy1 / Math.max(dy0, 10));
+
+          for(const key of Object.keys(axSnap)){
+            const snap = axSnap[key];
+            const rng = snap.range;
+            const span = rng[1] - rng[0];
+            const isX = key.startsWith('x');
+            const s = isX ? scaleX : scaleY;
+            const panPx = isX ? -panDx : panDy;
+            const axisPx = isX ? pw : ph;
+
+            // Anchor point (where the midpoint was at gesture start)
+            const anchorPx = isX ? (mid0[0] - rect.left - ml) : (mid0[1] - rect.top - mt);
+            const anchorFrac = anchorPx / axisPx;
+            const anchorVal = rng[0] + span * anchorFrac;
+            const newSpan = span / s;
+            const panVal = (panPx / axisPx) * newSpan;
+
+            const newStart = anchorVal - anchorFrac * newSpan + panVal;
+            update[key+'.range[0]'] = newStart;
+            update[key+'.range[1]'] = newStart + newSpan;
+          }
+        }
+
+        if(Object.keys(update).length > 0){
+          Plotly.relayout(el, update);
+        }
+      });
+    }, {passive: false});
+
+    el.addEventListener('touchend', function(e){
+      if(e.touches.length === 0){
+        // Double-tap to reset zoom
+        const now = Date.now();
+        if(now - lastTapTime < 350){
+          Plotly.relayout(el, {
+            'xaxis.autorange':true, 'yaxis.autorange':true,
+            'xaxis2.autorange':true, 'yaxis2.autorange':true
+          });
+        }
+        lastTapTime = now;
+        touches0 = null;
+        axSnap = null;
+      } else {
+        // Finger lifted but gesture continues — re-snapshot
+        touches0 = Array.from(e.touches).map(t => ({clientX:t.clientX, clientY:t.clientY}));
+        axSnap = getAxes();
+      }
+    }, {passive: true});
+  })();
+
+  const presets = {
+    stable_ramp:{
+      signalType:'noisy_ramp',
+      nPts:240,
+      noise:3.5,
+      sampleRate:100,
+      sineFreq:1.0,
+      winAvg:21,
+      winReg:31,
+      alpha:0.05,
+      beta:0.003,
+      gamma:0.00005
+    },
+    step_response:{
+      signalType:'step',
+      nPts:220,
+      noise:1.0,
+      sampleRate:80,
+      sineFreq:1.0,
+      winAvg:9,
+      winReg:15,
+      alpha:0.18,
+      beta:0.012,
+      gamma:0.000002
+    },
+    periodic_signal:{
+      signalType:'sine',
+      nPts:320,
+      noise:2.0,
+      sampleRate:180,
+      sineFreq:1.4,
+      winAvg:13,
+      winReg:19,
+      alpha:0.075,
+      beta:0.004,
+      gamma:0.00001
+    },
+    curved_trend:{
+      signalType:'piecewise',
+      nPts:260,
+      noise:1.7,
+      sampleRate:120,
+      sineFreq:0.8,
+      winAvg:17,
+      winReg:25,
+      alpha:0.06,
+      beta:0.004,
+      gamma:0.00002
+    },
+    heavy_smoothing:{
+      signalType:'noisy_ramp',
+      nPts:260,
+      noise:5.0,
+      sampleRate:100,
+      sineFreq:1.0,
+      winAvg:31,
+      winReg:41,
+      alpha:0.025,
+      beta:0.0012,
+      gamma:0.000005
+    }
+  };
+
+  function applyPreset(name){
+    const preset = presets[name];
+    if(!preset) return;
+
+    els.signalType.value = preset.signalType;
+    els.nPts.value = preset.nPts;
+    els.noise.value = preset.noise;
+    els.sampleRate.value = preset.sampleRate;
+    els.sineFreq.value = preset.sineFreq;
+    els.winAvg.value = preset.winAvg;
+    els.winReg.value = preset.winReg;
+    els.alpha.value = sliderFromAlpha(preset.alpha);
+    els.beta.value = sliderFromBeta(preset.beta);
+    els.gamma.value = sliderFromGamma(preset.gamma);
+    plotAll();
+  }
+
+  function captureDefaults(){
+    const ids = [
+      'signalType','nPts','noise','sampleRate','sineFreq','seed',
+      'winAvg','winReg','alpha','beta','gamma',
+      'showRaw','showTruth','showAvg','showReg','showAB','showABG',
+      'showGradTruth','showGradAvg','showGradReg','showGradAB','showGradABG'
+    ];
+    ids.forEach(id => {
+      const el = els[id];
+      defaultState[id] = el.type === 'checkbox' ? el.checked : el.value;
+    });
+  }
+
+  function restoreDefaults(){
+    Object.keys(defaultState).forEach(id => {
+      const el = els[id];
+      if(!el) return;
+      if(el.type === 'checkbox') el.checked = defaultState[id];
+      else el.value = defaultState[id];
+    });
+    regenNonce = 0;
+    plotAll();
+  }
+
+  const bindIds = [
+    'signalType','nPts','noise','sampleRate','sineFreq','seed','winAvg','winReg','alpha','beta','gamma',
+    'showRaw','showTruth','showAvg','showReg','showAB','showABG',
+    'showGradTruth','showGradAvg','showGradReg','showGradAB','showGradABG'
+  ];
+  bindIds.forEach(id => els[id].addEventListener('input', schedulePlot));
+  bindIds.forEach(id => els[id].addEventListener('change', plotAll));
+
+  els.regenBtn.addEventListener('click', () => {
+    regenNonce++;
+    plotAll();
+  });
+  els.resetDefaultsBtn.addEventListener('click', restoreDefaults);
+
+  presetButtons.forEach(btn => {
+    btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+  });
+
+  els.csvFile.addEventListener('change', async () => {
+    const file = els.csvFile.files && els.csvFile.files[0];
+    if(!file) return;
+    try{
+      const text = await file.text();
+      customCsvData = parseCustomCsvText(text);
+      els.signalType.value = 'custom_csv';
+      setCsvStatus(`Loaded ${customCsvData.truth.length} rows from ${file.name}.`, 'ok');
+      plotAll();
+    }catch(err){
+      customCsvData = null;
+      setCsvStatus(`CSV error: ${err.message}`, 'err');
+      if(els.signalType.value === 'custom_csv') els.signalType.value = 'noisy_ramp';
+      plotAll();
+    }
+  });
+
+  els.clearCsvBtn.addEventListener('click', () => {
+    customCsvData = null;
+    els.csvFile.value = '';
+    setCsvStatus('No CSV loaded. Max 5000 rows.');
+    if(els.signalType.value === 'custom_csv') els.signalType.value = 'noisy_ramp';
+    plotAll();
+  });
+
+  const zoomBtns = document.querySelectorAll('.zoom-grid button[data-dragmode]');
+  zoomBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentDragMode = btn.dataset.dragmode;
+      zoomBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      plotAll();
+    });
+  });
+
+  document.getElementById('resetZoomBtn').addEventListener('click', () => {
+    const el = document.getElementById('plotCombined');
+    Plotly.relayout(el, {
+      'xaxis.autorange':true, 'yaxis.autorange':true,
+      'xaxis2.autorange':true, 'yaxis2.autorange':true
+    });
+  });
+
+  captureDefaults();
+  setCsvStatus('No CSV loaded. Max 1000 rows.');
+  updateLabels();
+  plotAll();
+})();
+</script>
+</body>
+</html>
